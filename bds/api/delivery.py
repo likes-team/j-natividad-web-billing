@@ -42,13 +42,17 @@ def confirm_deliver():
 
     if delivery is None:
         return jsonify({'result': True})
-
-    if _isCoordsNear(longitude, latitude, delivery.subscriber, .1):
+    
+    if delivery.subscriber.latitude is not None:
+        if _isCoordsNear(longitude, latitude, delivery.subscriber, .1):
+            delivery.status = "DELIVERED"
+            print("DELIVERED", delivery.id)
+        else:
+            delivery.status = "PENDING"
+            print("PENDING", delivery.id)
+    else:
         delivery.status = "DELIVERED"
         print("DELIVERED", delivery.id)
-    else:
-        delivery.status = "PENDING"
-        print("PENDING", delivery.id)
 
     img_file = request.files['file']
     
