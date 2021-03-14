@@ -51,6 +51,15 @@ def confirm_deliver():
             delivery.status = "PENDING"
             print("PENDING", delivery.id)
     else:
+        subscriber = Subscriber.query.get_or_404(subscriber_id)
+        messenger = User.query.get(messenger_id)
+
+        subscriber.latitude = latitude
+        subscriber.longitude = longitude
+        subscriber.accuracy = accuracy
+        subscriber.updated_by = messenger.fname + " " + messenger.lname
+        subscriber.updated_at = datetime.now()
+
         delivery.status = "DELIVERED"
         print("DELIVERED", delivery.id)
 
