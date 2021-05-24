@@ -128,6 +128,7 @@ def get_deliveries():
                 ).all()
 
     data = []
+
     for delivery in deliveries:
 
         data.append({
