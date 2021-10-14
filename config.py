@@ -47,9 +47,9 @@ class DevelopmentConfig(Config):
     Development configurations
     """
 
-    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?ssl=true&ssl_cert_reqs=CERT_NONE&retryWrites=true&w=majority&ssl=true"
+    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?ssl=true&ssl_cert_reqs=CERT_NONE&retryWrites=true&w=majority"
     
-    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?ssl=true&ssl_cert_reqs=CERT_NONE&retryWrites=true&w=majority&ssl=true"
+    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?ssl=true&ssl_cert_reqs=CERT_NONE&retryWrites=true&w=majority"
 
     DEBUG = True
 
