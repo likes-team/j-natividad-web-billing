@@ -47,9 +47,9 @@ class DevelopmentConfig(Config):
     Development configurations
     """
 
-    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
     
-    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 
     DEBUG = True
 
@@ -58,9 +58,9 @@ class ProductionConfig(Config):
     Production configurations
     """
 
-    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
     
-    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 
     DEBUG = False
 
