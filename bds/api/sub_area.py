@@ -33,7 +33,7 @@ def get_sub_area_subscribers(oid):
             query = Subscriber.query.filter_by(sub_area_id=sub_area.id)
         else:
             query = Subscriber.query.filter_by(sub_area_id=sub_area.id)\
-                .filter(or_(Subscriber.lname.like(search_value),Subscriber.contract_number.like(search_value)))
+                .filter(or_(Subscriber.lname.like(search_value),Subscriber.contract_no.like(search_value)))
 
         subscribers = query.limit(length).offset(start).all()
 

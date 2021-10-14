@@ -1,6 +1,7 @@
+from bson.objectid import ObjectId
 from flask import current_app, redirect, render_template, request, flash, url_for
 from flask_login import login_required
-from app import CONTEXT, db
+from app import mongo, db
 from bds import bp_bds
 from bds.models import Area, SubArea, Subscriber
 import os, csv, platform
@@ -22,56 +23,80 @@ def upload_subscribers_csv():
 
         uploaded_file.save(file_path)
 
-        try:
-            with open(file_path, encoding = "ISO-8859-1") as f:
-                csv_file = csv.reader(f)
-                for _id,row in enumerate(csv_file):
-                    if not _id == 0:
-                        _area_name = row[0]
-                        _sub_area_name = row[1]
-                        area = Area.query.filter_by(name=_area_name).first()
-                        sub_area = SubArea.query.filter_by(name=_sub_area_name).first()
+        # try:
+        with open(file_path, encoding = "ISO-8859-1") as f:
+            csv_file = csv.reader(f)
+            with mongo.cx.start_session() as session:
+                with session.start_transaction():
+                    for _id,row in enumerate(csv_file):
+                        if not _id == 0:
+                            cycle = row[0]
+                            type = row[1]
+                            municipality = row[2]
+                            area_name = row[3]
+                            sub_area_name = row[4]
+                            contract_no = row[5]
+                            fname = row[6]
+                            lname = row[7]
+                            full_name = row[8]
+                            full_address = row[9]
 
-                        new_area: Area
-                        new_sub_area: SubArea
+                            print(contract_no, fname,lname)
+                            area = mongo.db.bds_areas.find_one({'name': area_name}, session=session)
+                            # area = Area.objects(name=area_name).first()
+                            sub_area = mongo.db.bds_sub_areas.find_one({'name': sub_area_name}, session=session)
+                            # sub_area = SubArea.objects(name=sub_area_name).first()
 
-                        if area is None:
-                            new_area = Area()
-                            new_area.name = _area_name
-                            new_area.description = None
-                            db.session.add(new_area)
-                            
-                        if sub_area is None:
-                            new_sub_area = SubArea()
-                            new_sub_area.name = _sub_area_name
-                            new_sub_area.description = None
-                                
+                            new_area_id = ObjectId()
+
                             if area is None:
-                                new_sub_area.area = new_area
+                                mongo.db.bds_areas.insert_one({
+                                    '_id': new_area_id,
+                                    'name': area_name,
+                                    'description': ''
+                                },session=session)
+
+                            new_sub_area_id = ObjectId()
+                            if sub_area is None:
+                                
+                                sub_area_area_id = None
+                                if area is None:
+                                    sub_area_area_id = new_area_id
+                                else:
+                                    sub_area_area_id = area['_Id']
+                                
+                                mongo.db.bds_sub_areas.insert_one({
+                                    '_id': new_sub_area_id,
+                                    'name': sub_area_name,
+                                    'description': '',
+                                    'area_id': sub_area_area_id
+                                },session=session)
+
+                            new = Subscriber()
+                            new.contract_no = contract_no
+                            new.fname = fname
+                            new.lname = lname
+                            new.address = full_address
+                            if sub_area is None:
+                                new.sub_area_id = new_sub_area_id
                             else:
-                                new_sub_area.area = area
-                            
-                            db.session.add(new_sub_area)
+                                new.sub_area_id = sub_area
 
-                        new = Subscriber()
-                        new.contract_number = row[2]
-                        new.fname = row[3]
-                        new.lname = row[4]
-                        new.address = row[6]
-                        if sub_area is None:
-                            new.sub_area = sub_area
-                        else:
-                            new.sub_area = sub_area
+                            mongo.db.bds_subscribers.insert_one({
+                                "_id": ObjectId(),
+                                "contract_no": new.contract_no,
+                                "fname": new.fname,
+                                "lname": new.lname,
+                                "address": new.address,
+                                "sub_area_id": new_sub_area_id if sub_area is None else sub_area
+                            },session=session)
 
-                        db.session.add(new)
+            flash("Subscribers uploaded!", 'success')
+    
+        # except Exception as exc:
+        #     if os.path.exists(file_path):
+        #         os.remove(file_path)
 
-                db.session.commit()
-                flash("Subscribers uploaded!", 'success')
-        
-        except Exception as exc:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-
-            flash(str(exc), 'error')
+        #     flash(str(exc), 'error')
             
     return redirect(url_for('bp_bds.subscribers'))

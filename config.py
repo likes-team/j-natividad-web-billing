@@ -1,15 +1,20 @@
 import os
+from dateutil import tz
+import pytz
 from dotenv import load_dotenv
 
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+TIMEZONE = pytz.timezone('Asia/Manila')
+FROM_ZONE = tz.tzutc()
+
 
 class Config(object):
     load_dotenv()
 
-    SECRET_KEY = "72d3e92e06474a69bd44dd6733f59722"
+    SECRET_KEY = os.environ.get('SECRET_KEY') # Key
 
     CORS_HEADERS = 'Content-Type' # Flask Cors
 
@@ -29,23 +34,12 @@ class Config(object):
     }
     #                 -END-
 
+    # DEVELOPERS-NOTE: -ADD YOUR CONFIGURATIONS HERE-
+    
+    #                 -END-
     # DEVELOPER-NOTE: -ADD YOUR CONFIGURATIONS HERE-
     UPLOAD_IMAGES_FOLDER = basedir + "/bds/static/img/uploads"
     UPLOAD_CSV_FOLDER = basedir + "/bds/static/csv/uploads"
-    #                 -END-
-
-
-def _get_database(server):
-    load_dotenv()
-
-    host = "localhost"
-    user = "root"
-    password = "db_password"
-    database = "db_bds"
-    if server == 'pythonanywhere':
-        return "mysql://{}:{}@{}/{}".format(user,password,host,database)
-    else:
-        return "mysql+pymysql://{}:{}@{}/{}".format(user,password,host,database)
 
 
 class DevelopmentConfig(Config):
@@ -53,19 +47,23 @@ class DevelopmentConfig(Config):
     Development configurations
     """
 
-    SQLALCHEMY_DATABASE_URI = _get_database('localhost')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+    
+    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+
     DEBUG = True
-    # SQLALCHEMY_ECHO = True
 
 class ProductionConfig(Config):
     """
     Production configurations
     """
-    SQLALCHEMY_DATABASE_URI = _get_database('pythonanywhere')
-    DEBUG = False
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    MONGODB_HOST = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
     
+    MONGO_URI = "mongodb+srv://dbUser:dbUserPassword@cluster0.1qgdg.mongodb.net/jNatividadBillingDB?retryWrites=true&w=majority"
+
+    DEBUG = False
+
 
 class TestingConfig(Config):
     """

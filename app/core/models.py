@@ -1,44 +1,78 @@
 """ CORE MODELS """
+from mongoengine.document import Document
 from app.admin.models import Admin
 from datetime import datetime
 
 from app import db
 import enum
+from config import TIMEZONE
+from dateutil.tz import tzutc, tzlocal
+import pytz
 
 
-# MODEL.BASE
-class Base(db.Model):
-    __abstract__ = True
+class Base(db.Document):
+    meta = {
+        'abstract': True
+    }
 
-    id = db.Column(db.Integer, primary_key=True)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    active = db.BooleanField(default=True)
+    is_deleted = db.BooleanField(default=False)
+    is_archived = db.BooleanField(default=False)
+    created_at = db.DateTimeField()
+    # TODO: updated_at = db.DateTimeField(default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.DateTimeField()
 
     # TODO: I relate na to sa users table 
     # Sa ngayon i store nalang muna yung names kasi andaming error kapag foreign key
-    created_by = db.Column(db.String(64),nullable=True)
-    updated_by = db.Column(db.String(64),nullable=True)
+    created_by = db.StringField()
+    updated_by = db.StringField()
+    created_at_string = db.StringField()
 
-    def __init__(self):
-        self.created_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
-        self.active = 1
+    @property
+    def created_at_local(self):
+        local_datetime = ''
+        if self.created_at is not None:
+            local_datetime = self.created_at.replace(tzinfo=pytz.utc).astimezone(TIMEZONE)
+            return local_datetime.strftime("%B %d, %Y %I:%M %p")
+            
+        return local_datetime
+
+
+    @property
+    def updated_at_local(self):
+        local_datetime = ''
+        if self.updated_at is not None:
+            local_datetime = self.updated_at.replace(tzinfo=pytz.utc).astimezone(TIMEZONE)
+            return local_datetime.strftime("%B %d, %Y %I:%M %p")
+            
+        return local_datetime
+
+
+    def set_created_at(self):
+        date_string = str(datetime.now(TIMEZONE).strftime("%Y-%m-%d %H:%M:%S"))
+        naive = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+        local_dt = TIMEZONE.localize(naive, is_dst=None)
+        utc_dt = local_dt.astimezone(pytz.utc)
+        self.created_at = utc_dt
+        self.created_at_string = date_string
+
+    def set_updated_at(self):
+        date_string = str(datetime.now(TIMEZONE).strftime("%Y-%m-%d %H:%M:%S"))
+        naive = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+        local_dt = TIMEZONE.localize(naive, is_dst=None)
+        utc_dt = local_dt.astimezone(pytz.utc)
+        self.updated_at = utc_dt
 
 
 class CoreModel(Base):
-    __tablename__ = 'core_model'
-    name = db.Column(db.String(64), nullable=False, server_default="")
-    module_id = db.Column(db.Integer, db.ForeignKey('core_module.id'))
-    description = db.Column(db.String(128), nullable=True, server_default="")
-    admin_included = db.Column(db.Boolean,default="1")
+    meta = {
+        'collection': 'core_models'
+    }
 
-    def __init__(self,name,module_id,description,admin_included=True):
-        Base.__init__(self)
-        self.name = name
-        self.module_id = module_id
-        self.description = description
-        self.admin_included = admin_included
+    name = db.StringField()
+    module = db.ReferenceField('CoreModule', required=True)
+    description = db.StringField()
+    admin_included = db.BooleanField(default=True)
 
 
 class ModuleStatus(enum.Enum):
@@ -47,50 +81,53 @@ class ModuleStatus(enum.Enum):
 
 
 class CoreModule(Base):
-    __tablename__ = 'core_module'
-    name = db.Column(db.String(64), nullable=False, server_default="")
-    short_description = db.Column(db.String(64), nullable=False, server_default="")
-    long_description = db.Column(db.String(255), nullable=False, server_default="")
-    status = db.Column(db.Enum(ModuleStatus),default=ModuleStatus.uninstalled,nullable=False)
-    version = db.Column(db.String(64), nullable=False, server_default="")
-    models = db.relationship('CoreModel', cascade='all,delete', backref="core_module")
+    meta = {
+        'collection': 'core_modules'
+    }
 
-    def __init__(self,name,short_description,version):
-        Base.__init__(self)
-        self.name = name
-        self.short_description = short_description
-        self.version = version
+    name = db.StringField()
+    short_description = db.StringField()
+    long_description = db.StringField()
+    status = db.StringField()
+    version = db.StringField()
+    models = db.ListField(db.ReferenceField('CoreModel'))
 
 
 class CoreCustomer(Base):
-    __abstract__ = True
-    fname = db.Column(db.String(64), nullable=False, default="")
-    lname = db.Column(db.String(64), nullable=False, default="")
-    phone = db.Column(db.String(64), nullable=True, default="")
-    email = db.Column(db.String(64), nullable=True, unique=True)
-    zip = db.Column(db.Integer,nullable=True,default=None)
-    street = db.Column(db.String(64), nullable=True,default="")
+    meta = {
+        'collection': 'core_customers'
+    }
+
+    fname = db.StringField()
+    lname = db.StringField()
+    phone = db.StringField()
+    email = db.EmailField()
+    zip = db.IntField()
+    street = db.StringField()
 
 
 class CoreCity(Base):
-    __tablename__ = 'core_city'
-    id = db.Column(db.Integer,primary_key=True, autoincrement=False)
-    name = db.Column(db.String(64), nullable=False,default="")
-    province_id = db.Column(db.Integer, db.ForeignKey('core_province.id'), nullable=True)
-    province = db.relationship("CoreProvince",backref='city')
+    meta = {
+        'collection': 'core_cities'
+    }
+
+    name = db.StringField()
+    province = db.ReferenceField('CoreProvince')
 
 
 class CoreProvince(Base):
-    __tablename__ = 'core_province'
-    id = db.Column(db.Integer,primary_key=True, autoincrement=False)
-    name = db.Column(db.String(64), nullable=False,default="")
+    meta = {
+        'collection': 'core_provinces'
+    }
+
+    name = db.StringField()
 
 
-class CoreLog(db.Model):
-    __abstract__ = True
+class CoreLog(db.Document):
+    meta = {
+        'abstract': True
+    }
 
-    """ COLUMNS """
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
-    description = db.Column(db.String(500),nullable=True)
-    data = db.Column(db.String(500),nullable=True)
+    date = db.DateTimeField(default=datetime.utcnow)
+    description = db.StringField()
+    data = db.StringField()

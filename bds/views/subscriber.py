@@ -6,17 +6,35 @@ from app.admin.templating import admin_table, admin_edit
 from bds import bp_bds
 from bds.models import Subscriber, Delivery
 from bds.forms import SubscriberForm, SubscriberEditForm
-
+from decimal import Decimal
 
 
 @bp_bds.route('/subscribers')
 @login_required
 def subscribers():
-    fields = [Subscriber.id, Subscriber.fname,Subscriber.lname,Subscriber.created_at, Subscriber.updated_by, Subscriber.updated_at]
+    # fields = [Subscriber.id, Subscriber.fname,Subscriber.lname,Subscriber.created_at, Subscriber.updated_by, Subscriber.updated_at]
+    fields = ['id', 'First Name', 'Last Name', 'Created At', 'Updated By', 'Updated At']
     form = SubscriberForm()
+
+    table_data = []
+
+    subscribers = Subscriber.objects()
+
+    subscriber : Subscriber 
+    for subscriber in subscribers:
+        table_data.append((
+            str(subscriber.id),
+            subscriber.fname,
+            subscriber.lname,
+            subscriber.created_at,
+            subscriber.updated_at     ,
+            subscriber.updated_by
+        ))
+
     return admin_table(Subscriber, fields=fields, form=form, create_url="bp_bds.create_subscriber",\
         edit_url="bp_bds.edit_subscriber", modals=["bds/subscriber/bds_upload_subscribers_csv.html"],\
-            action_template="bds/subscriber/bds_subscriber_action.html")
+            action_template="bds/subscriber/bds_subscriber_action.html",\
+                table_data=table_data, view_modal=False)
 
 
 @bp_bds.route('/subscribers/create',methods=['POST'])
@@ -29,26 +47,25 @@ def create_subscriber():
             flash(str(key) + str(value), 'error')
         return redirect(url_for('bp_bds.subscribers'))
     
-    try:
-        new = Subscriber()
-        new.fname = form.fname.data
-        new.lname = form.lname.data
-        new.email = form.email.data if form.email.data != '' else None
-        new.address = form.address.data
-        new.sub_area_id = form.sub_area_id.data if form.sub_area_id.data != '' else None
-        new.longitude = form.longitude.data
-        new.latitude = form.latitude.data
-        new.contract_number = form.contract_number.data
+    # try:
+    new = Subscriber()
+    new.fname = form.fname.data
+    new.lname = form.lname.data
+    new.email = form.email.data if form.email.data != '' else None
+    new.address = form.address.data
+    new.sub_area_id = form.sub_area_id.data if form.sub_area_id.data != '' else None
+    new.longitude = Decimal(form.longitude.data) if form.longitude.data != '' else None
+    new.latitude = Decimal(form.latitude.data) if form.latitude.data != '' else None
+    new.contract_no = form.contract_number.data
 
-        db.session.add(new)
-        db.session.commit()
-        flash('New subscriber added successfully!','success')
-    except Exception as e:
-        flash(str(e), 'error')
+    new.save()
+    flash('New subscriber added successfully!','success')
+    # except Exception as e:
+    #     flash(str(e), 'error')
     return redirect(url_for('bp_bds.subscribers'))
 
 
-@bp_bds.route('/subscribers/<int:oid>/edit',methods=['GET','POST'])
+@bp_bds.route('/subscribers/<string:oid>/edit',methods=['GET','POST'])
 @login_required
 def edit_subscriber(oid):
     ins = Subscriber.query.get_or_404(oid)

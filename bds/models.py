@@ -11,15 +11,20 @@ class Billing(Base, Admin):
     __amicon__ = 'pe-7s-cash'
     __view_url__ = 'bp_bds.billings'
 
-    number = db.Column(db.String(64), nullable=False)
-    name = db.Column(db.String(64), nullable=True)
-    description = db.Column(db.String(1000),nullable=True)
-    deliveries = db.relationship('Delivery', cascade='all,delete', backref="billing")
-    date_from = db.Column(db.DateTime, default=datetime.utcnow,nullable=True)
-    date_to = db.Column(db.DateTime, default=datetime.utcnow,nullable=True)
+    number = db.StringField()
+    name = db.StringField()
+    description = db.StringField()
+    # deliveries = db.relationship('Delivery', cascade='all,delete', backref="billing")
+    date_from = db.DateTimeField()
+    date_to = db.DateTimeField()
 
 
 class Subscriber(Base, Admin):
+    meta = {
+        'collection': 'bds_subscribers',
+        'strict': False
+    }
+    
     __tablename__ = 'bds_subscribers'
     __amname__ = 'subscriber'
     __amdescription__ = 'Subscribers'
@@ -27,18 +32,18 @@ class Subscriber(Base, Admin):
     __view_url__ = 'bp_bds.subscribers'
 
     """ COLUMNS """
-    fname = db.Column(db.String(64), nullable=True)
-    mname = db.Column(db.String(64), nullable=True)
-    lname = db.Column(db.String(64), nullable=True)
-    email = db.Column(db.String(64), nullable=True, unique=True)
-    contract_number = db.Column(db.String(255), nullable=False)
-    address = db.Column(db.String(1000), nullable=True)
-    phone_number = db.Column(db.String(64), nullable=True)
-    longitude = db.Column(db.String(255),nullable=True)
-    latitude = db.Column(db.String(255), nullable=True)
-    deliveries = db.relationship('Delivery', cascade='all,delete', backref="subscriber",order_by="desc(Delivery.delivery_date)")
-    sub_area_id = db.Column(db.Integer, db.ForeignKey('bds_sub_area.id', ondelete="SET NULL"), nullable=True)
-    sub_area = db.relationship('SubArea',backref="subscribers", uselist=False)
+    fname = db.StringField()
+    mname = db.StringField()
+    lname = db.StringField()
+    email = db.EmailField()
+    contract_no = db.StringField()
+    address = db.StringField()
+    phone_number = db.StringField()
+    longitude = db.DecimalField()
+    latitude = db.DecimalField()
+    # deliveries = db.relationship('Delivery', cascade='all,delete', backref="subscriber",order_by="desc(Delivery.delivery_date)")
+    
+    sub_area_id = db.ReferenceField('SubArea')
 
     @property
     def url(self):
@@ -53,18 +58,17 @@ class Delivery(Base, Admin):
     __view_url__ = 'bp_bds.deliveries'
     
     """ COLUMNS """
-    billing_id = db.Column(db.Integer, db.ForeignKey('bds_billings.id', ondelete="SET NULL"), nullable=True)
-    subscriber_id = db.Column(db.Integer, db.ForeignKey('bds_subscribers.id', ondelete="SET NULL"), nullable=True)
-    messenger_id = db.Column(db.Integer, db.ForeignKey('auth_user.id', ondelete="SET NULL"), nullable=True)
-    messenger = db.relationship('User',backref="deliveries", uselist=False)
-    delivery_date = db.Column(db.DateTime, default=datetime.utcnow,nullable=True)
-    date_delivered = db.Column(db.DateTime, nullable=True)
-    date_mobile_delivery = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(255), nullable=True)
-    image_path = db.Column(db.String(255), nullable=True)
-    accuracy = db.Column(db.String(255), nullable=True)
-    delivery_longitude = db.Column(db.String(255),nullable=True)
-    delivery_latitude = db.Column(db.String(255), nullable=True)
+    billing_id = db.ReferenceField('Billing')
+    subscriber_id = db.ReferenceField('Subscriber')
+    messenger_id = db.ReferenceField("User")
+    delivery_date = db.DateTimeField()
+    date_delivered = db.DateTimeField()
+    date_mobile_delivery = db.DateTimeField()
+    status = db.StringField()
+    image_path = db.StringField()
+    accuracy = db.DecimalField()
+    delivery_longitude = db.DecimalField()
+    delivery_latitude = db.DecimalField()
 
     def __init__(self, subscriber_id, status):
         super(Delivery, self).__init__()
@@ -73,7 +77,11 @@ class Delivery(Base, Admin):
 
 
 class Area(Base, Admin):
-    __tablename__ = 'bds_area'
+    meta = {
+        'collection': 'bds_areas',
+        'strict': False
+    }
+    __tablename__ = 'bds_areas'
     __amname__ = 'area'
     __amdescription__ = 'Locations'
     __amicon__ = 'pe-7s-flag'
@@ -84,14 +92,18 @@ class Area(Base, Admin):
         ]
 
     """ COLUMNS """
-    name = db.Column(db.String(255),nullable=False)
-    description = db.Column(db.String(1000),nullable=True)
-    municipality_id = db.Column(db.Integer, db.ForeignKey('bds_municipality.id'), nullable=True)
-    municipality = db.relationship("Municipality", backref='areas')
+    name = db.StringField()
+    description = db.StringField()
+    municipality_id = db.ReferenceField('Municipality')
 
 
 class SubArea(Base, Admin):
-    __tablename__ = 'bds_sub_area'
+    meta = {
+        'collection': 'bds_sub_areas',
+        'strict': False
+    }
+
+    __tablename__ = 'bds_sub_areas'
     __amname__ = 'sub_area'
     __amdescription__ = 'Sub Areas'
     __amicon__ = 'pe-7s-flag'
@@ -99,13 +111,12 @@ class SubArea(Base, Admin):
     #__list_view_url__ = 'bp_bds.areas'
 
     """ COLUMNS """
-    name = db.Column(db.String(255),nullable=False)
-    description = db.Column(db.String(1000),nullable=True)
-    area_id = db.Column(db.Integer, db.ForeignKey('bds_area.id', ondelete="SET NULL"), nullable=True)
-    area = db.relationship('Area',backref="sub_areas")
+    name = db.StringField()
+    description = db.StringField()
+    area_id = db.ReferenceField('Area')
 
 
-class Messenger(db.Model, Admin):
+class Messenger(db.Document, Admin):
     __abstract__ = True
     __tablename__ = 'auth_user'
     __amname__ = 'user'
@@ -121,8 +132,8 @@ class Municipality(Base, Admin):
     __amicon__ = 'pe-7s-flag'
     __parent_model__ = 'area'
 
-    name = db.Column(db.String(255),nullable=False)
-    description = db.Column(db.String(1000),nullable=True)
+    name = db.StringField()
+    description = db.StringField()
 
 
 class DeliveryMap(Admin):
