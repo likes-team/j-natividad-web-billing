@@ -1,9 +1,11 @@
 from datetime import datetime
+import decimal
+from bson.objectid import ObjectId
 from flask import (jsonify, request, abort)
-from app import csrf
+from app import csrf, mongo
 from app.auth.models import User
 from bds import bp_bds
-from bds.models import Delivery, Subscriber, Area, SubArea
+from bds.models import Delivery, Messenger, Subscriber, Area, SubArea
 
 
 @bp_bds.route('/api/subscribers', methods=['GET'])
@@ -53,15 +55,23 @@ def update_location():
     messenger_id = request.json['messenger_id']
     subscriber_id = request.json['subscriber_id']
 
-    subscriber = Subscriber.query.get_or_404(subscriber_id)
-    messenger = User.query.get(messenger_id)
+    subscriber = Subscriber.find_one_by_id(id=subscriber_id)
+    messenger = Messenger.find_one_by_id(id=messenger_id)
 
     subscriber.latitude = latitude
     subscriber.longitude = longitude
     subscriber.accuracy = accuracy
     subscriber.updated_by = messenger.fname + " " + messenger.lname
-    subscriber.updated_at = datetime.now()
-    db.session.commit()
+
+    mongo.db.auth_users.update_one({
+        '_id': subscriber.id
+    }, {'$set': {
+        'latitude': subscriber.latitude,
+        'longitude': subscriber.longitude,
+        'accuracy': subscriber.accuracy,
+        'updated_by': subscriber.updated_by,
+        'updated_at': datetime.utcnow()
+    }})
 
     return jsonify({'result': True})
 

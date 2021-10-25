@@ -37,7 +37,6 @@ class BaseModel(object):
         return self._id
 
     def save(self, session=None):
-        print(self.__dict__)
         self.created_at = datetime.utcnow()
         self.created_by = current_user.full_name if current_user is None else 'System'
 
@@ -48,6 +47,10 @@ class BaseModel(object):
 
     def update(self):
         pass
+        # self.__collection__.update_one(
+        #     {'_id': self._id},
+        #     {'$set': self.__dict__})
+
 
     def delete(self):
         pass

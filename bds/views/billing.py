@@ -2,6 +2,8 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash, jsonify
 from flask_login import  login_required, current_user
+from flask_pymongo import DESCENDING
+import pymongo
 from app.admin.templating import admin_table, admin_edit
 from bds import bp_bds
 from bds.models import Billing
@@ -22,7 +24,7 @@ def billings():
     _billing_generated_number = ""
 
     # query = db.session.query(Billing).order_by(Billing.id.desc()).first()
-    query_last_billing = list(mongo.db.bds_billings.find().sort('created_at').limit(1))
+    query_last_billing = list(mongo.db.bds_billings.find().sort('created_at', pymongo.DESCENDING).limit(1))
 
     if query_last_billing:
         _billing_generated_number = generate_number("BILL", query_last_billing[0]['billing_no'])

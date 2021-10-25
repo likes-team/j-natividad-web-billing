@@ -1,4 +1,4 @@
-{% extends "bds/area/area_base.html" %}
+{% extends "bds/messenger/messenger_base.html" %}
 
 {% block content %}
 <div class="app-main__inner">
@@ -9,7 +9,7 @@
                     <i class="pe-7s-flag text-success">
                     </i>
                 </div>
-                <div>Create Area
+                <div>Create Messenger
                 </div>
             </div>
         </div>
@@ -22,7 +22,7 @@
             </a>
         </li>
     </ul>
-    <form action="{{ url_for('bp_bds.create_area') }}" id="create_form" class="needs-validation" method="POST"
+    <form action="{{ url_for('bp_bds.create_messenger') }}" id="create_form" class="needs-validation" method="POST"
         novalidate>
         <div class="tab-content">
             <div class="tab-pane tabs-animation fade active show" id="tab-content-0" role="tabpanel">
@@ -31,26 +31,26 @@
                         <div class="form-row">
                             <div class="col-md-6">
                                 <div class="position-relative form-group">
-                                    <label for="name" class="">Name</label>
-                                    <input name="name" id="name" type="text" class="form-control input_required"
+                                    <label for="fname" class="">First Name</label>
+                                    <input name="fname" id="fname" type="text" class="form-control input_required"
                                         required>
                                     <div class="valid-feedback">
                                         Looks good!
                                     </div>
                                     <div class="invalid-feedback">
-                                        Please provide a valid name
+                                        Please provide a valid value
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="position-relative form-group">
-                                    <label for="description" class="">Description</label>
-                                    <input name="description" id="description" type="text" class="form-control">
+                                    <label for="lname" class="">Last Name</label>
+                                    <input name="lname" id="lname" type="text" class="form-control" required>
                                     <div class="valid-feedback">
                                         Looks good!
                                     </div>
                                     <div class="invalid-feedback">
-                                        Please provide a valid description
+                                        Please provide a valid value
                                     </div>
                                 </div>
                             </div>
@@ -58,39 +58,45 @@
                         <div class="form-row">
                             <div class="col-md-6">
                                 <div class="position-relative form-group">
-                                    <label for="municipality_id" class="">Municipality</label>
-                                    <select name="municipality_id" id="municipality_id" class="form-control">
-                                        <option value="">Choose...</option>
-                                        {% for municipality in data['municipalities'] %}
-                                        <option value="{{ municipality.id }}">
-                                            {{municipality.name}}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
+                                    <label for="username" class="">Username</label>
+                                    <input name="username" id="username" type="text" class="form-control input_required"
+                                        required>
                                     <div class="valid-feedback">
                                         Looks good!
                                     </div>
                                     <div class="invalid-feedback">
-                                        Please provide a valid
+                                        Please provide a valid value
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="position-relative form-group">
+                                    <label for="email" class="">Email</label>
+                                    <input name="email" id="email" type="text" class="form-control">
+                                    <div class="valid-feedback">
+                                        Looks good!
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Please provide a valid value
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- <div class="col-lg-14">
+                <div class="col-lg-14">
                     <div class="main-card mb-3 card">
                         <div class="card-body">
-                            <h5 class="card-title">Messengers</h5>
+                            <h5 class="card-title">Areas</h5>
                             <div class="table-responsive">
-                                <table id="tbl_messengers_line" class="mb-0 table table-bordered" style="width: 100%;">
+                                <table id="tbl_areas_line" class="mb-0 table table-bordered" style="width: 100%;">
                                     <thead>
                                         <tr>
                                             <th style="display:none;"></th>
                                             <th></th>
-                                            <th class="text-center">FIRST NAME</th>
-                                            <th class="text-center">LAST NAME</th>
-                                            <th class="text-center">USERNAME</th>
+                                            <th class="text-center">NAME</th>
+                                            <th class="text-center">DESCRIPTION</th>
+                                            <th class="text-center">MUNICIPALITY</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -106,7 +112,7 @@
                             </div>
                         </div>
                     </div>
-                </div> -->
+                </div>
             </div>
         </div>
 

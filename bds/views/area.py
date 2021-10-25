@@ -70,18 +70,15 @@ def create_area():
         with session.start_transaction():
             if messengers_line:
                 for mes_id in messengers_line:
-                    # messenger = Messenger.find_one_by_id(id=mes_id, session=session)
                     mongo.db.auth_users.update_one({
                         '_id': ObjectId(mes_id)
                     },
                     {"$push":{
                         'areas': new.toJson()
                     }
-                    },session=session)
-
+                    }, session=session)
             new.save(session=session)
-        
-        flash('New Area added successfully!','success')
+    flash('New Area added successfully!','success')
     # except Exception as exc:
     #     flash(str(exc), 'error')
 
@@ -91,19 +88,28 @@ def create_area():
 @bp_bds.route('/areas/<string:oid>/edit', methods=['GET','POST'])
 @login_required
 def edit_area(oid):
-    # from app.auth.models import messenger_areas
-
-    ins = Area.query.get_or_404(oid)
+    ins = Area.find_one_by_id(id=oid)
     form = AreaEditForm(obj=ins)
     if request.method == 'GET':
+        area_messengers_query = list(mongo.db.auth_users.find({
+            'areas._id': {'$in': [ins.id]}
+        }))
+        ins.messengers = [Messenger(data=data) for data in area_messengers_query]
         
-        query = db.session.query(User.id).join(messenger_areas).filter_by(area_id=oid)
-        _messengers = db.session.query(User).filter(~User.id.in_(query)).filter_by(role_id=2).all()
-        _municipalities = Municipality.query.all()
+        messengers_query = list(mongo.db.auth_users.find({
+            'role_id' : MESSENGER_ROLE.id,
+            'areas._id': {'$nin': [ins.id]}
+        }))
+        messengers = [Messenger(data=data) for data in messengers_query]
+        print("messengers: ", messengers)
+        
+        # query = db.session.query(User.id).join(messenger_areas).filter_by(area_id=oid)
+        # _messengers = db.session.query(User).filter(~User.id.in_(query)).filter_by(role_id=2).all()
+        municipalities = Municipality.find_all()
 
         data = {
-            'messengers': _messengers,
-            'municipalities': _municipalities
+            'messengers': messengers,
+            'municipalities': municipalities
         }
 
         return admin_render_template(Area, 'bds/area/bds_edit_area.html', 'bds', oid=oid, ins=ins,form=form,\
@@ -112,16 +118,16 @@ def edit_area(oid):
     try:
         ins.name = request.form.get('name', '')
         ins.description = request.form.get('description', '')
-        ins.municipality_id = request.form.get('municipality_id') if request.form.get('municipality_id') != '' else None
-        messengers_line = request.form.getlist('messengers[]')
-        ins.messengers = []
-        
-        if messengers_line:
-            for mes_id in messengers_line:
-                messenger = User.query.get_or_404(int(mes_id))
-                ins.messengers.append(messenger)
+        ins.municipality_id = ObjectId(request.form.get('municipality_id')) if request.form.get('municipality_id') != '' else None
 
-        db.session.commit()
+        mongo.db.bds_areas.update_one({
+            '_id': ins.id
+        },{"$set":{
+            'name': ins.name,
+            'description': ins.description,
+            'municipality_id': ins.municipality_id
+        }})
+
         flash('Area updated Successfully!','success')
     except Exception as e:
         flash(str(e),'error')

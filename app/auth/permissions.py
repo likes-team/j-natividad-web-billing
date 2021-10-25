@@ -20,22 +20,17 @@ def load_permissions(user_id):
 
     if user.is_superuser or user.role.name == "Admin":
         all_permissions = CoreModel.find_all()
-        print(all_permissions)
 
         permission: CoreModel
         for permission in all_permissions:
             session['permissions'][permission.name] = {"read": True, "create": True, \
                 "write": True, "delete": True}  
-        print(session['permissions'])
 
     else:
         role_permissions = Role.objects(id=user.role.id).get().permissions
-        print(role_permissions)
         for role_permission in role_permissions:
             session['permissions'][role_permission['model_name']] = {"read": role_permission['read'], "create": role_permission['create'], \
                 "write": role_permission['write'], "delete": role_permission['delete']}
-    
-    print(session['permissions'])
     return True
 
 

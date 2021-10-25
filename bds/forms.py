@@ -8,7 +8,7 @@ from wtforms import StringField
 class SubscriberForm(AdminTableForm):
     from .models import SubArea
 
-    __table_columns__ = ['First name','Last name', 'Created at', 'updated by','updated at']
+    __table_columns__ = ['First name','Last name',  'Sub Area','Created at', 'updated at']
     __heading__ = "Subscribers"
 
     fname = AdminField(label="First name",validators=[DataRequired()])

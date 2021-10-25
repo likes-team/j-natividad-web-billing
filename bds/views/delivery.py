@@ -25,16 +25,44 @@ def deliveries():
         modals=modals)
 
 
-@bp_bds.route('/subscribers/<int:subscriber_id>/delivery', methods=['GET'])
+@bp_bds.route('/subscribers/<string:subscriber_id>/delivery', methods=['GET'])
 @cross_origin()
 def get_delivery(subscriber_id):
     billing_id = request.args.get('billing_id')
 
-    delivery = Delivery.query.filter_by(
-        active=1,
-        subscriber_id=subscriber_id,
-        billing_id=billing_id
-        ).first()
+    deliveries_query = list(mongo.db.bds_deliveries.aggregate([
+        {'$match': {
+            'subscriber_id': ObjectId(subscriber_id), 
+            'active': 1,
+            'billing_id': ObjectId(billing_id)
+        }},
+        {'$lookup': {
+            'from': "auth_users", 
+            "localField": "subscriber_id", 
+            "foreignField": "_id",
+            'as': 'subscriber'
+            }},
+        {'$lookup': {
+            'from': "bds_areas", 
+            "localField": "area_id", 
+            "foreignField": "_id",
+            'as': 'area'
+            }},
+        {'$lookup': {
+            'from': "bds_sub_areas", 
+            "localField": "sub_area_id", 
+            "foreignField": "_id",
+            'as': 'sub_area'
+            }},
+        {'$lookup': {
+            'from': "auth_users", 
+            "localField": "messenger_id", 
+            "foreignField": "_id",
+            'as': 'messenger'
+            }}
+    ]))
+
+    delivery = Delivery(data=deliveries_query[0])
 
     if delivery is None:
         return jsonify({
@@ -49,8 +77,8 @@ def get_delivery(subscriber_id):
 
     print(delivery.image_path)
     return jsonify({
-        'id': delivery.id,
-        'subscriber_id': delivery.subscriber.id,
+        'id': str(delivery.id),
+        'subscriber_id': str(delivery.subscriber.id),
         'subscriber_fname': delivery.subscriber.fname,
         'subscriber_lname': delivery.subscriber.lname,
         'subscriber_address': delivery.subscriber.address,
@@ -156,8 +184,8 @@ def reset_all():
 @cross_origin()
 def deliver_all():
     billing_id = request.json['billing_id']
-    _sub_area_name = request.json['sub_area_name']
-    sub_area = SubArea.query.filter_by(name=_sub_area_name).first()
+    sub_area_name = request.json['sub_area_name']
+    sub_area = SubArea.query.filter_by(name=sub_area_name).first()
 
     if not sub_area:
         abort(404)

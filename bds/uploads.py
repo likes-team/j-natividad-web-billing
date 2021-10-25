@@ -3,6 +3,7 @@ from flask import current_app, redirect, render_template, request, flash, url_fo
 from flask_login import login_required
 from app import mongo
 from bds import bp_bds
+from bds.globals import SUBSCRIBER_ROLE
 from bds.models import Area, SubArea, Subscriber
 import os, csv, platform
 
@@ -11,9 +12,7 @@ import os, csv, platform
 @bp_bds.route('/upload/subscribers/csv', methods=['POST'])
 @login_required
 def upload_subscribers_csv():
-
     uploaded_file = request.files['csv_file']
-    
     if uploaded_file.filename != '':
         file_path = os.path.join(current_app.config['UPLOAD_CSV_FOLDER'], uploaded_file.filename)
         
@@ -77,18 +76,26 @@ def upload_subscribers_csv():
                             new.fname = fname
                             new.lname = lname
                             new.address = full_address
+                            new.establishment = type
+                            new.cycle = cycle
+
                             if sub_area is None:
                                 new.sub_area_id = new_sub_area_id
                             else:
                                 new.sub_area_id = sub_area
 
-                            mongo.db.bds_subscribers.insert_one({
+                            mongo.db.auth_users.insert_one({
                                 "_id": ObjectId(),
+                                "role_id": SUBSCRIBER_ROLE.id,
+                                "role_name": SUBSCRIBER_ROLE.name,
                                 "contract_no": new.contract_no,
                                 "fname": new.fname,
                                 "lname": new.lname,
                                 "address": new.address,
-                                "sub_area_id": new_sub_area_id if sub_area is None else sub_area
+                                "establishment": new.establishment,
+                                "cycle": new.cycle,
+                                "sub_area_id": new_sub_area_id if sub_area is None else sub_area['_id'],
+                                "sub_area_name": sub_area_name if sub_area is None else sub_area['name']
                             },session=session)
 
             flash("Subscribers uploaded!", 'success')

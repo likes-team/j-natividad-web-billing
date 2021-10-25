@@ -1,4 +1,5 @@
 from datetime import datetime
+from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash, jsonify
 from flask_login import current_user, login_required
 from app import csrf
@@ -15,7 +16,7 @@ from decimal import Decimal
 @login_required
 def subscribers():
     # fields = [Subscriber.id, Subscriber.fname,Subscriber.lname,Subscriber.created_at, Subscriber.updated_by, Subscriber.updated_at]
-    fields = ['id', 'First Name', 'Last Name', 'Created At', 'Updated By', 'Updated At']
+    fields = ['id', 'First Name', 'Last Name',  'Sub Area','Created At', 'Updated At']
     form = SubscriberForm()
 
     table_data = []
@@ -29,9 +30,9 @@ def subscribers():
             str(subscriber.id),
             subscriber.fname,
             subscriber.lname,
+            subscriber.sub_area_name,
             subscriber.created_at,
-            subscriber.updated_at     ,
-            subscriber.updated_by
+            subscriber.updated_at,
         ))
 
     return admin_table(Subscriber, fields=fields, form=form, create_url="bp_bds.create_subscriber",\
@@ -56,7 +57,7 @@ def create_subscriber():
     new.lname = form.lname.data
     new.email = form.email.data if form.email.data != '' else None
     new.address = form.address.data
-    new.sub_area_id = form.sub_area_id.data if form.sub_area_id.data != '' else None
+    new.sub_area_id = ObjectId(form.sub_area_id.data) if form.sub_area_id.data != '' else None
     new.longitude = Decimal(form.longitude.data) if form.longitude.data != '' else None
     new.latitude = Decimal(form.latitude.data) if form.latitude.data != '' else None
     new.contract_no = form.contract_number.data

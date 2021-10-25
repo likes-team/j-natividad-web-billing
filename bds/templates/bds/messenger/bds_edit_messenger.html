@@ -22,7 +22,7 @@
             </a>
         </li>
     </ul>
-    <form action="{{ url_for('bp_bds.edit_area',oid=oid) }}" id="create_form" class="needs-validation" method="POST"
+    <form action="{{ url_for('bp_bds.edit_messenger',oid=oid) }}" id="create_form" class="needs-validation" method="POST"
         novalidate>
         <div class="tab-content">
             <div class="tab-pane tabs-animation fade active show" id="tab-content-0" role="tabpanel">
@@ -31,27 +31,27 @@
                         <div class="form-row">
                             <div class="col-md-6">
                                 <div class="position-relative form-group">
-                                    <label for="name" class="">Name</label>
-                                    <input name="name" id="name" type="text" class="form-control input_required"
-                                        required value="{{form.name.data}}">
+                                    <label for="fname" class="">First Name</label>
+                                    <input name="fname" id="fname" type="text" class="form-control input_required"
+                                        required value="{{form.fname.data}}">
                                     <div class="valid-feedback">
                                         Looks good!
                                     </div>
                                     <div class="invalid-feedback">
-                                        Please provide a valid name
+                                        Please provide a valid value
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="position-relative form-group">
-                                    <label for="description" class="">Description</label>
-                                    <input name="description" id="description" type="text" class="form-control"
-                                        value="{% if not form.description.data == None %}{{form.description.data}}{% endif %}">
+                                    <label for="lname" class="">Description</label>
+                                    <input name="lname" id="lname" type="text" class="form-control"
+                                        value="{{form.lname.data}}">
                                     <div class="valid-feedback">
                                         Looks good!
                                     </div>
                                     <div class="invalid-feedback">
-                                        Please provide a valid description
+                                        Please provide a valid value
                                     </div>
                                 </div>
                             </div>
@@ -59,65 +59,72 @@
                         <div class="form-row">
                             <div class="col-md-6">
                                 <div class="position-relative form-group">
-                                    <label for="municipality_id" class="">Municipality</label>
-                                    <select name="municipality_id" id="municipality_id" class="form-control input_required">
-                                        <option value="">Choose...</option>
-                                        {% for municipality in data['municipalities'] %}
-                                        <option value="{{ municipality.id }}" {% if ins.municipality_id==municipality.id %}selected{% endif %}>
-                                            {{ municipality.name }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
+                                    <label for="username" class="">Username</label>
+                                    <input name="username" id="username" type="text" class="form-control input_required"
+                                        required value="{{form.username.data}}">
                                     <div class="valid-feedback">
                                         Looks good!
                                     </div>
                                     <div class="invalid-feedback">
-                                        Please provide a valid
+                                        Please provide a valid value
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="position-relative form-group">
+                                    <label for="email" class="">Email</label>
+                                    <input name="email" id="email" type="text" class="form-control"
+                                        value="{{form.email.data}}">
+                                    <div class="valid-feedback">
+                                        Looks good!
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Please provide a valid value
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- <div class="col-lg-14">
+                <div class="col-lg-14">
                     <div class="main-card mb-3 card">
                         <div class="card-body">
-                            <h5 class="card-title">Messengers</h5>
+                            <h5 class="card-title">Areas</h5>
                             <div class="table-responsive">
                                 <table id="tbl_messengers_line" class="mb-0 table table-bordered" style="width: 100%;">
                                     <thead>
                                         <tr>
                                             <th style="display:none;"></th>
                                             <th></th>
-                                            <th>FIRST NAME</th>
-                                            <th>LAST NAME</th>
-                                            <th>USERNAME</th>
+                                            <th>NAME</th>
+                                            <th>DESCRIPTION</th>
+                                            <th>MUNICIPALITY</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for messenger in ins.messengers %}
+                                        {% for area in ins.areas_obj %}
                                         <tr>
-                                            <td style="display:none;"><input name="messengers[]" type="hidden"
-                                                    value="{{messenger.id}}"></td>
+                                            <td style="display:none;"><input name="areas[]" type="hidden"
+                                                    value="{{area.id}}"></td>
                                             <td style='width:50px'><input class="chkbox" type="checkbox"></td>
-                                            <td>{{messenger.fname}}</td>
-                                            <td>{{messenger.lname}}</td>
-                                            <td>{{messenger.username}}</td>
+                                            <td>{{area.name}}</td>
+                                            <td>{{area.description}}</td>
+                                            <td>{{area.municipality}}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
                             <div class="d-block text-center card-footer">
-                                <button id="btn_delete_messenger" type="button"
+                                <button disabled id="btn_delete_messenger" type="button"
                                     class="mr-2 btn-icon btn-icon-only btn btn-outline-danger"><i
                                         class="pe-7s-trash btn-icon-wrapper"> </i></button>
                                 <button type="button" class="btn-wide btn btn-success" data-toggle="modal"
-                                    data-target="#add_messenger_modal" data-placement="bottom">Add</button>
+                                    data-target="#add_area_modal" data-placement="bottom">Add</button>
                             </div>
                         </div>
                     </div>
-                </div> -->
+                </div>
             </div>
             <div class="tab-pane tabs-animation fade" id="tab-content-1" role="tabpanel">
                 <div class="col-lg-14">

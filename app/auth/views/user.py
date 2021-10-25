@@ -27,7 +27,6 @@ def users(**options):
 
     user: User
     for user in query:
-        print('test',user)
         table_data.append((
             user.id,
             user.username,

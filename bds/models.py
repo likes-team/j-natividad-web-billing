@@ -23,37 +23,6 @@ class Billing(BaseModel, Admin):
     date_to: datetime
 
 
-class Delivery(BaseModel, Admin):
-    __tablename__ = 'bds_deliveries'
-    __amname__ = 'delivery'
-    __amdescription__ = 'Deliveries'
-    __amicon__ = 'pe-7s-paper-plane'
-    __view_url__ = 'bp_bds.deliveries'
-    __collection__ = mongo.db.bds_deliveries
-    
-    """ COLUMNS """
-    billing_id: ObjectId = None
-    subscriber_id: ObjectId = None
-    sub_area_id: ObjectId = None
-    area_id: ObjectId = None
-    messenger_id: ObjectId = None
-    delivery_date: datetime = None
-    date_delivered: datetime = None
-    date_mobile_delivery: datetime = None
-    status: str = None
-    image_path: str = None
-    accuracy: Decimal = None
-    delivery_longitude: Decimal = None
-    delivery_latitude: Decimal = None
-
-    def __init__(self, data=None):
-        print("DELIVERYDATA: ",data)
-        super(Delivery, self).__init__(data=data)
-
-        if data is not None:
-            self.status = data.get('status')
-
-
 class Area(BaseModel, Admin):
     __tablename__ = 'bds_areas'
     __amname__ = 'area'
@@ -67,13 +36,17 @@ class Area(BaseModel, Admin):
     __collection__ = mongo.db.bds_areas
 
     """ COLUMNS """
-    name: str
-    description: str
-    municipality_id: ObjectId
+    name: str = None
+    description: str = None
+    municipality_id: ObjectId = None
+    messengers: list = None
 
     @classmethod
     def find_all_by_municipality_id(cls, id):
         areas = list(cls.__collection__.aggregate([
+            {"$match": {
+                'municipality_id': ObjectId(id)
+            }},
             {"$lookup": {"from": "bds_municipalities", "localField": "municipality_id",
                          "foreignField": "_id", 'as': "municipality"}}
         ]))
@@ -109,6 +82,9 @@ class SubArea(BaseModel, Admin):
     @classmethod
     def find_all_by_area_id(cls, id):
         sub_areas = list(cls.__collection__.aggregate([
+            {"$match": {
+                "area_id": ObjectId(id)
+            }},
             {"$lookup": {"from": "bds_areas", "localField": "area_id",
                          "foreignField": "_id", 'as': "area"}}
         ]))
@@ -160,7 +136,7 @@ class Messenger(User):
     __amicon__ = 'pe-7s-car'
     __view_url__ = 'bp_bds.messengers'
 
-    areas: list
+    areas: list = []
 
     def __init__(self, data=None):
         super(Messenger, self).__init__(data=data)
@@ -168,7 +144,26 @@ class Messenger(User):
         if data is not None:
             self.areas = data.get('areas', [])
 
-    # areas = db.relationship('Area', secondary=messenger_areas, lazy='subquery',backref=db.backref('messengers', lazy=True), cascade='all,delete')
+    
+    @property
+    def areas_obj(self):
+        areas = []
+        for area_id in self.areas:
+            areas.append(Area.find_one_by_id(id=area_id))
+        return areas
+
+    def update(self):
+        self.__collection__.update_one({
+            '_id': self.id
+        },
+        {'$set': {
+            'fname': self.fname,
+            'lname': self.lname,
+            'email': self.email,
+            'username': self.username,
+            'areas': self.areas
+            }
+        })
 
 
 class Subscriber(User):
@@ -184,8 +179,11 @@ class Subscriber(User):
     contract_no: str
     address: str
     mobile_no: str
-    longitude: Decimal
-    latitude: Decimal
+    longitude: str
+    latitude: str
+    accuracy: str
+    cycle: int
+    establishment: str
     # deliveries = db.relationship('Delivery', cascade='all,delete', backref="subscriber",order_by="desc(Delivery.delivery_date)")
     sub_area_id: ObjectId
     _sub_area: SubArea
@@ -201,6 +199,7 @@ class Subscriber(User):
             self.mobile_no = data.get('mobile_no')
             self.longitude = data.get('longitude', None)
             self.latitude = data.get('latitude', None)
+            self.accuracy = data.get('accuracy', None)
             self.sub_area_name = data.get('sub_area_name', '')
 
             if 'sub_area' in data and len(data['sub_area']) > 0:
@@ -213,3 +212,63 @@ class Subscriber(User):
     @property
     def sub_area(self):
         return self._sub_area
+
+
+class Delivery(BaseModel, Admin):
+    __tablename__ = 'bds_deliveries'
+    __amname__ = 'delivery'
+    __amdescription__ = 'Deliveries'
+    __amicon__ = 'pe-7s-paper-plane'
+    __view_url__ = 'bp_bds.deliveries'
+    __collection__ = mongo.db.bds_deliveries
+    
+    """ COLUMNS """
+    billing_id: ObjectId = None
+    subscriber_id: ObjectId = None
+    _subscriber: Subscriber = None
+    sub_area_id: ObjectId = None
+    _sub_area: SubArea = None
+    area_id: ObjectId = None
+    _area: Area = None
+    messenger_id: ObjectId = None
+    _messenger: Messenger = None
+    delivery_date: datetime = None
+    date_delivered: datetime = None
+    date_mobile_delivery: datetime = None
+    status: str = None
+    image_path: str = None
+    accuracy: str = None
+    delivery_longitude: Decimal = None
+    delivery_latitude: Decimal = None
+
+    def __init__(self, data=None):
+        print("DELIVERYDATA: ",data)
+        super(Delivery, self).__init__(data=data)
+
+        if data is not None:
+            self.status = data.get('status')
+
+            if 'subscriber' in data:
+                self._subscriber = Subscriber(data=data['subscriber'][0])
+            if 'area' in data:
+                self._area = Area(data=data['area'][0])
+            if 'sub_area' in data:
+                self._sub_area = SubArea(data=data['sub_area'][0])
+            if 'messenger' in data:
+                self._messenger = Messenger(data=data['messenger'][0])
+
+    @property
+    def subscriber(self):
+        return self._subscriber
+
+    @property
+    def area(self):
+        return self._area
+
+    @property
+    def sub_area(self):
+        return self._sub_area
+
+    @property
+    def messenger(self):
+        return self._messenger

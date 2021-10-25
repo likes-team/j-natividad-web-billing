@@ -28,8 +28,6 @@ def login():
         return redirect(url_for(current_app.config['AUTH']['LOGIN_REDIRECT_URL']))
 
     user = User.find_one_by_username(form.username.data)
-    
-    print(user)
 
     if not user:
         flash('Invalid username or password','error')

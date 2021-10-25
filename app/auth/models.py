@@ -71,7 +71,6 @@ class Role(BaseModel, Admin):
         super(Role, self).__init__(data=data)
 
         if data is not None:
-            print(data['permissions'])
             self.permissions = RolePermission.load(data=data.get('permissions', []))
 
     @classmethod
@@ -176,7 +175,6 @@ class User(UserMixin, BaseModel, Admin):
         
         data = []
         for user in users:
-            print(user)
             data.append(cls(data=user))
 
         return data
