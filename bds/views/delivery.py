@@ -94,22 +94,26 @@ def get_delivery(subscriber_id):
     })
 
 
-@bp_bds.route('/api/delivery/<int:delivery_id>/confirm', methods=['POST'])
+@bp_bds.route('/api/delivery/<string:delivery_id>/confirm', methods=['POST'])
 @cross_origin()
 def confirm_delivery_id(delivery_id):
 
-    delivery = Delivery.query.get_or_404(delivery_id)
+    delivery = Delivery.find_one_by_id(id=delivery_id)
 
     if delivery is None:
         abort(404)
 
-
     delivery.status = "DELIVERED"
-    db.session.commit()
+
+    mongo.db.bds_deliveries.update_one({
+        '_id': delivery.id,
+    },{"$set":{
+        'status': delivery.status
+    }})
 
     return jsonify({
         'result':True, 
-        'delivery': {'id': delivery.id,}
+        'delivery': {'id': str(delivery.id),}
         })
 
 
