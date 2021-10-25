@@ -1,12 +1,12 @@
 import platform
 import os
+from bson.objectid import ObjectId
 import click
 import csv
 from shutil import copyfile
 from config import basedir
 from app.core.models import CoreModel, CoreModule
-from app import MODULES
-from app import db
+from app import MODULES, mongo
 from . import bp_core
 from .models import CoreCity,CoreProvince
 from app.auth.models import User, Role
@@ -200,19 +200,19 @@ def install():
 
 def _create_superuser():
     try:
-        role = Role.objects(name="Admin").first()
-
-        user = User(
-            fname="Administrator",
-            lname="Administrator",
-            username = input("Enter Username: "),
-            email = None,
-            is_superuser = 1,
-            role=role,
-            created_by = "System",
-        )
+        role = Role(data=mongo.db.auth_user_roles.find_one({'name': 'Admin'}))
+        
+        user = User()
+        user.fname = "Administrator"
+        user.lname = "Administrator"
+        user.username = input("Enter Username: ")
+        user.is_superuser = True
+        user.role_id = role._id
         user.set_password(input("Enter password: "))
         user.save()
+
+        print(user)
+
         print("SuperUser Created!")
     except Exception as exc:
         print(str(exc))

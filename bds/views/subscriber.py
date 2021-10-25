@@ -1,9 +1,11 @@
 from datetime import datetime
 from flask import redirect, url_for, request, flash, jsonify
 from flask_login import current_user, login_required
-from app import db, csrf
+from app import csrf
 from app.admin.templating import admin_table, admin_edit
+from app.auth.models import Role
 from bds import bp_bds
+from bds.globals import SUBSCRIBER_ROLE
 from bds.models import Subscriber, Delivery
 from bds.forms import SubscriberForm, SubscriberEditForm
 from decimal import Decimal
@@ -18,8 +20,9 @@ def subscribers():
 
     table_data = []
 
-    subscribers = Subscriber.objects()
-
+    subscribers = Subscriber.find_all_by_role_id(role_id=SUBSCRIBER_ROLE.id)
+    
+    print(subscribers)
     subscriber : Subscriber 
     for subscriber in subscribers:
         table_data.append((
@@ -57,7 +60,8 @@ def create_subscriber():
     new.longitude = Decimal(form.longitude.data) if form.longitude.data != '' else None
     new.latitude = Decimal(form.latitude.data) if form.latitude.data != '' else None
     new.contract_no = form.contract_number.data
-
+    new.role_id = SUBSCRIBER_ROLE.id
+    new.role_name = SUBSCRIBER_ROLE.name
     new.save()
     flash('New subscriber added successfully!','success')
     # except Exception as e:

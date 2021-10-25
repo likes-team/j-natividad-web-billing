@@ -1,86 +1,60 @@
-from app import db
+from bson.objectid import ObjectId
 from app.admin.models import Admin
-from app.core.models import Base
-from datetime import datetime
+from app.auth.models import User
+from app.core.models import BaseModel
+from datetime import date, datetime
+from decimal import Decimal
+from app import mongo
 
-
-class Billing(Base, Admin):
+class Billing(BaseModel, Admin):
     __tablename__ = 'bds_billings'
     __amname__ = 'billing'
     __amdescription__ = 'Billings'
     __amicon__ = 'pe-7s-cash'
     __view_url__ = 'bp_bds.billings'
+    __collection__ = mongo.db.bds_billings
 
-    number = db.StringField()
-    name = db.StringField()
-    description = db.StringField()
+    billing_no: int
+    full_billing_no: str
+    name: str
+    description: str
     # deliveries = db.relationship('Delivery', cascade='all,delete', backref="billing")
-    date_from = db.DateTimeField()
-    date_to = db.DateTimeField()
+    date_from: datetime
+    date_to: datetime
 
 
-class Subscriber(Base, Admin):
-    meta = {
-        'collection': 'bds_subscribers',
-        'strict': False
-    }
-    
-    __tablename__ = 'bds_subscribers'
-    __amname__ = 'subscriber'
-    __amdescription__ = 'Subscribers'
-    __amicon__ = 'pe-7s-users'
-    __view_url__ = 'bp_bds.subscribers'
-
-    """ COLUMNS """
-    fname = db.StringField()
-    mname = db.StringField()
-    lname = db.StringField()
-    email = db.EmailField()
-    contract_no = db.StringField()
-    address = db.StringField()
-    phone_number = db.StringField()
-    longitude = db.DecimalField()
-    latitude = db.DecimalField()
-    # deliveries = db.relationship('Delivery', cascade='all,delete', backref="subscriber",order_by="desc(Delivery.delivery_date)")
-    
-    sub_area_id = db.ReferenceField('SubArea')
-
-    @property
-    def url(self):
-        return "bp_bds.subscribers"
-
-
-class Delivery(Base, Admin):
-    __tablename__ = 'bds_delivery'
+class Delivery(BaseModel, Admin):
+    __tablename__ = 'bds_deliveries'
     __amname__ = 'delivery'
     __amdescription__ = 'Deliveries'
     __amicon__ = 'pe-7s-paper-plane'
     __view_url__ = 'bp_bds.deliveries'
+    __collection__ = mongo.db.bds_deliveries
     
     """ COLUMNS """
-    billing_id = db.ReferenceField('Billing')
-    subscriber_id = db.ReferenceField('Subscriber')
-    messenger_id = db.ReferenceField("User")
-    delivery_date = db.DateTimeField()
-    date_delivered = db.DateTimeField()
-    date_mobile_delivery = db.DateTimeField()
-    status = db.StringField()
-    image_path = db.StringField()
-    accuracy = db.DecimalField()
-    delivery_longitude = db.DecimalField()
-    delivery_latitude = db.DecimalField()
+    billing_id: ObjectId = None
+    subscriber_id: ObjectId = None
+    sub_area_id: ObjectId = None
+    area_id: ObjectId = None
+    messenger_id: ObjectId = None
+    delivery_date: datetime = None
+    date_delivered: datetime = None
+    date_mobile_delivery: datetime = None
+    status: str = None
+    image_path: str = None
+    accuracy: Decimal = None
+    delivery_longitude: Decimal = None
+    delivery_latitude: Decimal = None
 
-    def __init__(self, subscriber_id, status):
-        super(Delivery, self).__init__()
-        self.subscriber_id = subscriber_id
-        self.status = status
+    def __init__(self, data=None):
+        print("DELIVERYDATA: ",data)
+        super(Delivery, self).__init__(data=data)
+
+        if data is not None:
+            self.status = data.get('status')
 
 
-class Area(Base, Admin):
-    meta = {
-        'collection': 'bds_areas',
-        'strict': False
-    }
+class Area(BaseModel, Admin):
     __tablename__ = 'bds_areas'
     __amname__ = 'area'
     __amdescription__ = 'Locations'
@@ -90,50 +64,86 @@ class Area(Base, Admin):
         ("Areas", "bp_bds.areas", 'area'),
         ("Municipalities", "bp_bds.municipalities", 'municipality'),
         ]
+    __collection__ = mongo.db.bds_areas
 
     """ COLUMNS """
-    name = db.StringField()
-    description = db.StringField()
-    municipality_id = db.ReferenceField('Municipality')
+    name: str
+    description: str
+    municipality_id: ObjectId
+
+    @classmethod
+    def find_all_by_municipality_id(cls, id):
+        areas = list(cls.__collection__.aggregate([
+            {"$lookup": {"from": "bds_municipalities", "localField": "municipality_id",
+                         "foreignField": "_id", 'as': "municipality"}}
+        ]))
+
+        data = []
+        for area in areas:
+            data.append(cls(data=area))
+        return data
+
+    @classmethod
+    def find_one_by_name(cls, name):
+        try:
+            query = cls.__collection__.find_one({'name': name})
+            return cls(data=query)
+        except Exception:
+            raise Exception("No area found from the name({}) given".format(name))
 
 
-class SubArea(Base, Admin):
-    meta = {
-        'collection': 'bds_sub_areas',
-        'strict': False
-    }
-
+class SubArea(BaseModel, Admin):
     __tablename__ = 'bds_sub_areas'
     __amname__ = 'sub_area'
     __amdescription__ = 'Sub Areas'
     __amicon__ = 'pe-7s-flag'
     __parent_model__ = 'area'
     #__list_view_url__ = 'bp_bds.areas'
+    __collection__ = mongo.db.bds_sub_areas
 
     """ COLUMNS """
-    name = db.StringField()
-    description = db.StringField()
-    area_id = db.ReferenceField('Area')
+    name: str
+    description: str
+    area_id: ObjectId
+
+    @classmethod
+    def find_all_by_area_id(cls, id):
+        sub_areas = list(cls.__collection__.aggregate([
+            {"$lookup": {"from": "bds_areas", "localField": "area_id",
+                         "foreignField": "_id", 'as': "area"}}
+        ]))
+
+        data = []
+        for sub_area in sub_areas:
+            data.append(cls(data=sub_area))
+        return data
 
 
-class Messenger(db.Document, Admin):
-    __abstract__ = True
-    __tablename__ = 'auth_user'
-    __amname__ = 'user'
-    __amdescription__ = 'Messengers'
-    __amicon__ = 'pe-7s-car'
-    __view_url__ = 'bp_bds.messengers'
-
-
-class Municipality(Base, Admin):
-    __tablename__ = 'bds_municipality'
+class Municipality(BaseModel, Admin):
+    __tablename__ = 'bds_municipalities'
     __amname__ = 'municipality'
     __amdescription__ = 'Municipalities'
     __amicon__ = 'pe-7s-flag'
     __parent_model__ = 'area'
+    __collection__ = mongo.db.bds_municipalities
 
-    name = db.StringField()
-    description = db.StringField()
+    name: str
+    description: str
+
+    def __init__(self, data=None):
+        super(Municipality, self).__init__(data=data)
+
+        if data is not None:
+            self.name = data.get('name', '')
+            self.description = data.get('description', '')
+
+    @classmethod
+    def find_one_by_name(cls, name):
+        try:
+            query = cls.__collection__.find_one({'name': name})
+            return cls(data=query)
+        except Exception:
+            raise Exception("No municipality found from the name({}) given".format(name))
 
 
 class DeliveryMap(Admin):
@@ -141,3 +151,65 @@ class DeliveryMap(Admin):
     __amdescription__ = 'Delivery Map'
     __amicon__ = 'pe-7s-map-2'
     __view_url__ = 'bp_bds.delivery_map'
+
+
+class Messenger(User):
+    __tablename__ = 'auth_users'
+    __amname__ = 'user'
+    __amdescription__ = 'Messengers'
+    __amicon__ = 'pe-7s-car'
+    __view_url__ = 'bp_bds.messengers'
+
+    areas: list
+
+    def __init__(self, data=None):
+        super(Messenger, self).__init__(data=data)
+        
+        if data is not None:
+            self.areas = data.get('areas', [])
+
+    # areas = db.relationship('Area', secondary=messenger_areas, lazy='subquery',backref=db.backref('messengers', lazy=True), cascade='all,delete')
+
+
+class Subscriber(User):
+    __tablename__ = 'bds_subscribers'
+    __amname__ = 'subscriber'
+    __amdescription__ = 'Subscribers'
+    __amicon__ = 'pe-7s-users'
+    __view_url__ = 'bp_bds.subscribers'
+    __collection__ = mongo.db.auth_users
+
+    """ COLUMNS """
+    mname: str
+    contract_no: str
+    address: str
+    mobile_no: str
+    longitude: Decimal
+    latitude: Decimal
+    # deliveries = db.relationship('Delivery', cascade='all,delete', backref="subscriber",order_by="desc(Delivery.delivery_date)")
+    sub_area_id: ObjectId
+    _sub_area: SubArea
+    sub_area_name: str
+
+    def __init__(self, data=None):
+        super(Subscriber, self).__init__(data=data)
+
+        if data is not None:
+            self.mname = data.get('mname', '')
+            self.contract_no = data.get('contract_no', '')
+            self.address = data.get('address', '')
+            self.mobile_no = data.get('mobile_no')
+            self.longitude = data.get('longitude', None)
+            self.latitude = data.get('latitude', None)
+            self.sub_area_name = data.get('sub_area_name', '')
+
+            if 'sub_area' in data and len(data['sub_area']) > 0:
+                self._sub_area = SubArea(data=data['sub_area'][0])
+
+    @property
+    def url(self):
+        return "bp_bds.subscribers"
+
+    @property
+    def sub_area(self):
+        return self._sub_area

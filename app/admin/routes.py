@@ -3,12 +3,11 @@ from flask import flash, redirect, url_for, request, jsonify
 from flask_login import login_required
 from flask_cors import cross_origin
 from sqlalchemy import text
-from app import db
 from app.admin import bp_admin
 
 
 
-@bp_admin.route('/delete/<string:table_name>/<int:oid>',methods=['POST'])
+@bp_admin.route('/delete/<string:table_name>/<string:oid>',methods=['POST'])
 @login_required
 def delete(table_name,oid):
     try:

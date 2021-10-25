@@ -21,9 +21,9 @@ def dashboard():
         return redirect(url_for('bp_admin.no_view_url'))
     
     options = {
-        'box1': DashboardBox("Total Modules","Installed",CoreModule.objects.count()),
-        'box2': DashboardBox("System Models","Total models",CoreModel.objects.count()),
-        'box3': DashboardBox("Users","Total users",User.objects.count()),
+        'box1': DashboardBox("Total Modules","Installed", CoreModule.count()),
+        'box2': DashboardBox("System Models","Total models", CoreModel.count()),
+        'box3': DashboardBox("Users","Total users", User.count()),
         'scripts': [{'bp_admin.static': 'js/dashboard.js'}]
     }
 

@@ -95,7 +95,7 @@ class AdminField(Field):
             else:
                 self.type = 'select'
 
-            self.select_data = model.objects
+            self.select_data = model.find_all()
         else:
             self.type = type
 

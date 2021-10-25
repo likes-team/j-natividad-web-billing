@@ -42,7 +42,7 @@
                             {% if session['permissions'][model.__amname__]['read'] or current_user.is_superuser %}
                                 {% if model.__amfunctions__ is not none %}
                                     <li>
-                                        <a href="#" class="{% if model.__amdescription__ != 'Subscribers' %} disabled {% endif%} {% if (RENDERED_MODEL.__amname__ == model.__amname__ or RENDERED_MODEL.__parent_model__ == model.__amname__) %} mm-active {% endif %}">
+                                        <a href="#" class="{% if (RENDERED_MODEL.__amname__ == model.__amname__ or RENDERED_MODEL.__parent_model__ == model.__amname__) %} mm-active {% endif %}">
                                             <i class="metismenu-icon {{ model.__amicon__ }} icon-gradient bg-premium-dark" aria-hidden="true"></i>
                                             {{ model.__amdescription__ }}
                                             <i class="metismenu-state-icon pe-7s-angle-down caret-left"></i>
@@ -51,7 +51,7 @@
                                             {% for function in model.__amfunctions__ %}
                                             <li>
                                                 <a href="{{ url_for(function[1]) }}" 
-                                                class="{% if model.__amdescription__ != 'Subscribers' %} disabled {% endif%} model-function {% if RENDERED_MODEL.__amname__ == function[2] %} mm-active {% endif %}">
+                                                class="model-function {% if RENDERED_MODEL.__amname__ == function[2] %} mm-active {% endif %}">
                                                     <i class="metismenu-icon">
                                                     </i>{{ function[0] }}
                                                 </a>
@@ -61,7 +61,7 @@
                                     </li>
                                 {% else %}
                                     <li>
-                                    <a href="{{ url_for(model.__view_url__)}}" class="{% if model.__amdescription__ != 'Subscribers' %} disabled {% endif%} {% if RENDERED_MODEL.__amname__==model.__amname__ %} mm-active {% endif %}">
+                                    <a href="{{ url_for(model.__view_url__)}}" class="{% if RENDERED_MODEL.__amname__==model.__amname__ %} mm-active {% endif %}">
                                         <i class="metismenu-icon {{model.__amicon__}} icon-gradient bg-premium-dark" aria-hidden="true"></i>
                                         {{model.__amdescription__}}
                                     </a>

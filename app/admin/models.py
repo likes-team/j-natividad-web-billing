@@ -1,5 +1,5 @@
 """ ADMIN MODELS"""
-from app import db
+from app.core.models import BaseModel
 
 
 class Admin(object):
@@ -31,14 +31,12 @@ class Admin(object):
         raise NotImplementedError('Must implement admin-model description')
 
 
-class AdminUserOptions(db.Document):
-    meta = {
-        'collection': 'admin_user_options'
-    }
+# class AdminUserOptions(BaseModel):
+#     from app.auth.models import User
 
-    user = db.ReferenceField('User')
-    header_color = db.StringField()
-    sidebar_color = db.StringField()
+#     user: User
+#     header_color: str
+#     sidebar_color: str
 
 class AdminDashboard(Admin):
     __amname__ = 'admin_dashboard'

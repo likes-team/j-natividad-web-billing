@@ -1,25 +1,18 @@
 import os
-import json
 from datetime import datetime
 from math import pi, cos, sqrt
+from flask_cors.decorator import cross_origin
 from werkzeug.utils import secure_filename
 from flask import (jsonify, request, current_app)
-# from flask_cors import cross_origin
-from app import db, csrf
+from app import csrf, mongo
 from app.auth.models import User
 from bds import bp_bds
-from bds.models import Billing, Delivery, Subscriber, Area, SubArea
+from bds.models import Billing, Delivery, Messenger, Subscriber, Area, SubArea
 
 
 @bp_bds.route('/api/confirm-deliver', methods=['POST'])
 @csrf.exempt
 def confirm_deliver():
-
-    # FETCH DATA
-    # data = json.loads(request.form['data'])
-    # print(data)
-    print(request.form)
-
     longitude = request.form['longitude']
     latitude = request.form['latitude']
     accuracy = request.form['accuracy']
@@ -96,36 +89,39 @@ def confirm_deliver():
 
 
 @bp_bds.route('/api/deliveries', methods=['GET'])
-@csrf.exempt
+@cross_origin()
 def get_deliveries():
-    from app.auth.models import messenger_areas
+    query_by = request.args.get('query')
 
-    _query = request.args.get('query')
+    deliveries_query = []
 
-    deliveries: Delivery
+    # active_billing = Billing.query.filter_by(active=1).first()
+    active_billing = Billing(data=mongo.db.bds_billings.find_one({'active': 1}))
 
-    active_billing = Billing.query.filter_by(active=1).first()
 
     if active_billing is None:
         return jsonify({'deliveries': []})
 
-    if not _query == 'by_messenger':
-        deliveries = Delivery.query.filter_by(active=1).all()
-        
+    if not query_by == 'by_messenger':
+        # deliveries = Delivery.query.filter_by(active=1).all()
+        deliveries_query = list(mongo.db.bds_deliveries.find({'active': 1}))
     else:
-        _messenger_id = request.args.get('messenger_id')
-        messenger = User.query.get_or_404(_messenger_id)
+        messenger_id = request.args.get('messenger_id')
+        messenger: Messenger = Messenger.find_one_by_id(id=messenger_id)
+        messenger_areas = [area['_id'] for area in messenger.areas]
+        print("messenger_areas: ", messenger_areas)
+        messenger_sub_areas_query = list(mongo.db.bds_sub_areas.find({'area_id': {'$in': messenger.areas}}))
+        messenger_sub_areas = [sub_area['_id'] for sub_area in messenger_sub_areas_query]
+        # query = db.session.query(Area.id).join(messenger_areas).filter_by(messenger_id=messenger.id)
+        # _sub_areas_query = db.session.query(SubArea.id).join(Area).filter(SubArea.area_id.in_(query))
 
-        query = db.session.query(Area.id).join(messenger_areas).filter_by(messenger_id=messenger.id)
-        
-        _sub_areas_query = db.session.query(SubArea.id).join(Area).filter(SubArea.area_id.in_(query))
-        
-        deliveries = db.session.query(Delivery).filter_by(
-            active=1,
-            billing_id=active_billing.id
-            ).join(Subscriber).join(SubArea).filter(
-                SubArea.id.in_(_sub_areas_query)
-                ).all()
+        deliveries_query = mongo.db.bds_deliveries.find({'sub_area_id'})
+        # deliveries = db.session.query(Delivery).filter_by(
+        #     active=1,
+        #     billing_id=active_billing.id
+        #     ).join(Subscriber).join(SubArea).filter(
+        #         SubArea.id.in_(_sub_areas_query)
+        #         ).all()
 
     data = []
 

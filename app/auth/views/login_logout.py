@@ -1,7 +1,7 @@
 from werkzeug.urls import url_parse
 from flask import render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
-from app import CONTEXT
+from app import mongo
 from app.auth import bp_auth
 from app.auth.models import User
 from app.auth.forms import LoginForm
@@ -27,7 +27,9 @@ def login():
             flash(str(key) + str(value), 'error')
         return redirect(url_for(current_app.config['AUTH']['LOGIN_REDIRECT_URL']))
 
-    user = User.objects(username=form.username.data).first()
+    user = User.find_one_by_username(form.username.data)
+    
+    print(user)
 
     if not user:
         flash('Invalid username or password','error')

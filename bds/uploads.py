@@ -1,7 +1,7 @@
 from bson.objectid import ObjectId
 from flask import current_app, redirect, render_template, request, flash, url_for
 from flask_login import login_required
-from app import mongo, db
+from app import mongo
 from bds import bp_bds
 from bds.models import Area, SubArea, Subscriber
 import os, csv, platform

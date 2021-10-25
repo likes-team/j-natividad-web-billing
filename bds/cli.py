@@ -1,4 +1,3 @@
-from app import db
 from app.core.cli import core_install
 from app.auth.models import Role
 from bds.models import Municipality

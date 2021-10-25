@@ -1,6 +1,6 @@
 from flask import render_template
 from flask_login import current_user
-from app import MODULES, CONTEXT, db
+from app import MODULES, CONTEXT
 from app.core.models import CoreModel, CoreModule
 from app.auth.permissions import check_read
 
@@ -84,16 +84,18 @@ def admin_table(*models, fields, form=None, **options):
         'parent_model': None,
         'table_name': table_name,
         'modals': [],
-        'scripts': [
-            {'bp_admin.static': 'js/admin_table.js'}
-            ]
+        'scripts': []
     }
 
     table_options.update(options)
 
     if table_options['module_name'] is None:
-        _query_module_name = CoreModel.objects(name=model_name).first()
-        table_options['module_name'] = CoreModule.objects.get(id=_query_module_name.module.id).name
+        _query_module_name = CoreModel.find_one_by_name(model_name)
+        print("_query_module_name", _query_module_name)
+
+        print(CoreModule.find_by_id(_query_module_name.module.id))
+        print("MODULE ID", _query_module_name.module.id)
+        table_options['module_name'] = CoreModule.find_by_id(_query_module_name.module.id).name
     
     if models[0].__parent_model__ is not None:
         table_options['parent_model'] = models[0].__parent_model__
@@ -105,9 +107,9 @@ def admin_table(*models, fields, form=None, **options):
         elif len(models) == 2:
             table_options['table_data'] = models[0].query.outerjoin(models[1]).with_entities(*fields).all()
 
-        elif len(models) == 3:
-            _query1 = db.session.query(models[0],models[1],models[2])
-            table_options['table_data'] = _query1.outerjoin(models[1]).outerjoin(models[2]).with_entities(*fields).all()
+        # elif len(models) == 3:
+        #     _query1 = db.session.query(models[0],models[1],models[2])
+        #     table_options['table_data'] = _query1.outerjoin(models[1]).outerjoin(models[2]).with_entities(*fields).all()
     
     modal_data = {
         'create_url': None,
@@ -159,8 +161,8 @@ def admin_table(*models, fields, form=None, **options):
 def admin_edit(model, form, update_url, oid, table_url, **options):
     
     model_name = model.__amname__
-    _query1 = CoreModel.objects(name=model_name).first()
-    module_name = CoreModule.objects.get(id=_query1.module.id).name
+    _query1 = CoreModel.find_one_by_name(model_name)
+    module_name = CoreModule.find_by_id(_query1.module.id).name
 
     edit_options = {
         'module_name': module_name,

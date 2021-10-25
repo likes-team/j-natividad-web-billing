@@ -1,13 +1,14 @@
+from bson.objectid import ObjectId
 from flask import session
 from flask_login import current_user
-from app import CONTEXT, MODULES
+from app import CONTEXT, mongo
 from app.core.models import CoreModel
 
 
 
 def load_permissions(user_id):
     from app.auth.models import User, Role
-    user = User.objects.get_or_404(id=user_id)
+    user = User.find_one_by_id(user_id)
 
     if not user and not current_user.is_authenticated:
         CONTEXT['system_modules'].pop('admin',None)
@@ -18,12 +19,15 @@ def load_permissions(user_id):
         session['permissions'] = {}
 
     if user.is_superuser or user.role.name == "Admin":
-        all_permissions = CoreModel.objects
+        all_permissions = CoreModel.find_all()
+        print(all_permissions)
 
+        permission: CoreModel
         for permission in all_permissions:
             session['permissions'][permission.name] = {"read": True, "create": True, \
                 "write": True, "delete": True}  
-    
+        print(session['permissions'])
+
     else:
         role_permissions = Role.objects(id=user.role.id).get().permissions
         print(role_permissions)

@@ -1,6 +1,5 @@
 from flask import (jsonify, request, abort)
-# from flask_cors import cross_origin
-from app import db, csrf
+from app import csrf
 from app.auth.models import User
 from bds import bp_bds
 from bds.models import Delivery, Subscriber, Area, SubArea

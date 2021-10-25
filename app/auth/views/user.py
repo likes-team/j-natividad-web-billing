@@ -2,7 +2,6 @@ from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import current_user, login_required
 from flask_cors import cross_origin
-from app import db
 from app.core.models import CoreModel
 from app.core.logging import create_log
 from app.auth import bp_auth
@@ -18,10 +17,45 @@ from app.admin.templating import admin_table, admin_edit
 @login_required
 def users(**options):
     form = UserForm()
-    fields = [User.id, User.username, User.fname, User.lname, Role.name, User.email]
-    models = [User, Role]
+    # fields = [User.id, User.username, User.fname, User.lname, Role.name, User.email]
+    fields = ['id', 'username', 'fname', 'lname', 'role', 'email']
+    models = [User]
 
-    return admin_table(*models, fields=fields, form=form, create_url='bp_auth.create_user', edit_url="bp_auth.edit_user", **options)
+    query = User.find_all()
+
+    table_data = []
+
+    user: User
+    for user in query:
+        print('test',user)
+        table_data.append((
+            user.id,
+            user.username,
+            user.fname,
+            user.lname,
+            user.role.name,
+            user.email
+        ))
+    
+    return admin_table(*models, fields=fields, form=form, create_url='bp_auth.create_user',\
+        edit_url="bp_auth.edit_user", table_data=table_data, view_modal_url='/auth/get-view-user-data', **options)
+
+
+@bp_auth.route('/get-view-user-data', methods=['GET'])
+@login_required
+def get_view_user_data():
+    _column, _id = request.args.get('column'), request.args.get('id')
+
+    _data = User.objects(id=_id).values_list(_column)
+
+    response = jsonify(result=str(_data[0]),column=_column)
+
+    if _column == "role":
+        response = jsonify(result=str(_data[0].id),column=_column)
+
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.status_code = 200
+    return response
 
 
 @bp_auth.route('/users/create', methods=['POST'])
@@ -64,8 +98,8 @@ def create_user(**kwargs):
         user.set_password("password")
         user.is_superuser = 0
         user.created_by = "{} {}".format(current_user.fname,current_user.lname)
-        db.session.add(user)
-        db.session.commit()
+        # db.session.add(user)
+        # db.session.commit()
         flash('New User Added Successfully!','success')
         create_log("New user added","UserID={}".format(user.id))
 
@@ -76,7 +110,7 @@ def create_user(**kwargs):
         return redirect(url_for(url))
 
 
-@bp_auth.route('/users/<int:oid>/edit', methods=['GET', 'POST'])
+@bp_auth.route('/users/<string:oid>/edit', methods=['GET', 'POST'])
 @login_required
 @cross_origin()
 def edit_user(oid,**kwargs):
@@ -108,7 +142,7 @@ def edit_user(oid,**kwargs):
         user.role_id = form.role_id.data
         user.updated_at = datetime.now()
         user.updated_by = "{} {}".format(current_user.fname,current_user.lname)
-        db.session.commit()
+        # db.session.commit()
         flash('User update Successfully!','success')
         create_log('User update',"UserID={}".format(oid))
 
@@ -163,7 +197,7 @@ def email_check():
 def change_password(oid):
     user = User.query.get_or_404(oid)
     user.set_password(request.form.get('password'))
-    db.session.commit()
+    # db.session.commit()
     flash("Password change successfully!",'success')
     return redirect(request.referrer)
 
@@ -196,7 +230,7 @@ def edit_permission(oid1, oid2):
     elif permission_type == "delete":
         permission.delete = value
 
-    db.session.commit()
+    # db.session.commit()
 
     load_permissions(current_user.id)
 

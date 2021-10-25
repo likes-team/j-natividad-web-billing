@@ -1,7 +1,6 @@
 from datetime import datetime
 from flask import redirect, url_for, request, current_app, flash
 from flask_login import current_user, login_required
-from app import db
 from app.admin.templating import admin_table, admin_edit
 from bds import bp_bds
 from bds.models import Municipality
@@ -12,10 +11,24 @@ from bds.forms import MunicipalityForm, MunicipalityEditForm
 @bp_bds.route('/municipalities')
 @login_required
 def municipalities():
-    fields = [Municipality.id, Municipality.name, Municipality.description, Municipality.created_at, Municipality.updated_at]
+    fields = ["id", "name", "description", "created_at", "updated_at"]
     form = MunicipalityForm()
 
-    return admin_table(Municipality, fields=fields,form=form,\
+    table_data = []
+
+    query = Municipality.find_all()
+
+    municipality: Municipality
+    for municipality in query:
+        table_data.append((
+            str(municipality.id),
+            municipality.name,
+            municipality.description,
+            municipality.created_at_local,
+            municipality.updated_at_local
+        ))
+
+    return admin_table(Municipality, fields=fields,form=form, table_data=table_data,\
         create_url='bp_bds.create_municipality', edit_url='bp_bds.edit_municipality')
 
 
@@ -33,9 +46,7 @@ def create_municipality():
         new = Municipality()
         new.name = form.name.data
         new.description = form.description.data
-
-        db.session.add(new)
-        db.session.commit()
+        new.save()
 
         flash('New municipality added successfully!')
     except Exception as exc:
@@ -44,7 +55,7 @@ def create_municipality():
     return redirect(url_for('bp_bds.municipalities'))
 
 
-@bp_bds.route('/municipalities/<int:oid>/edit', methods=['GET', 'POST'])
+@bp_bds.route('/municipalities/<string:oid>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_municipality(oid):
     ins = Municipality.query.get_or_404(oid)

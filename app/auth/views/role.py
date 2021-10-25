@@ -1,9 +1,8 @@
-from datetime import datetime
 from flask import flash, redirect, url_for, request, jsonify
 from flask_cors import cross_origin
 from flask_login import current_user, login_required
 from app.auth import bp_auth
-from app import db
+from app import mongo
 from app.auth.models import Role, RolePermission
 from app.auth.forms import RoleCreateForm, RoleEditForm
 from app.core.models import CoreModel
@@ -15,13 +14,40 @@ from app.auth.permissions import load_permissions
 @bp_auth.route('/roles')
 @login_required
 def roles(**options):
-    fields = [Role.id,Role.name,Role.created_at, Role.updated_at]
+    fields = ['id', 'name', 'created_at', 'updated_at']
     form = RoleCreateForm()
-    form.inline.data = CoreModel.query.all()
+    form.inline.data = CoreModel.find_all()
+
+    _roles = Role.find_all()
+
+    _table_data = []
+
+    for role in _roles:
+        _table_data.append((
+            role.id,
+            role.name,
+            role.created_at_local,
+            role.updated_at_local
+        ))
 
     return admin_table(Role, fields=fields, form=form, create_modal_template="auth/role_create_modal.html", \
         create_url='bp_auth.create_role',edit_url='bp_auth.edit_role', \
-            view_modal_template="auth/role_view_modal.html", **options)
+            view_modal_template="auth/role_view_modal.html", table_data=_table_data,\
+                view_modal_url='/auth/get-view-role-data' ,**options)
+
+
+@bp_auth.route('/get-view-role-data', methods=['GET'])
+@login_required
+def get_view_role_data():
+    _column, _id = request.args.get('column'), request.args.get('id')
+
+    data = Role.objects(id=_id).values_list(_column)
+
+    response = jsonify(result=str(data[0]),column=_column)
+
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.status_code = 200
+    return response
 
 
 @bp_auth.route('/roles/create',methods=['GET','POST'])
@@ -30,46 +56,55 @@ def create_role():
     form = RoleCreateForm()
 
     if form.validate_on_submit():
-        role = Role()
-        role.name = form.name.data
-        models = CoreModel.query.all()
-        r = request.form
+        form_data = request.form
+
+        permissions = []
+
+        models = CoreModel.find_all()
+
         for model in models:
-            mid = model.id
-            has_model = False
             read,create,write,delete = 0,0,0,0
-            read_string = 'chk_read_{}'.format(mid)
-            create_string = 'chk_create_{}'.format(mid)
-            write_string = 'chk_write_{}'.format(mid)
-            delete_string = 'chk_delete_{}'.format(mid)
 
-            if r.get(read_string) == 'on': read,has_model = 1,True
-            if r.get(create_string) == 'on': create,has_model = 1,True
-            if r.get(write_string) == 'on': write,has_model = 1, True
-            if r.get(delete_string) == 'on': delete,has_model = 1,True
+            read_string = 'read_{}'.format(model.name)
+            create_string = 'create_{}'.format(model.name)
+            write_string = 'write_{}'.format(model.name)
+            delete_string = 'chk_delete_{}'.format(model.name)
 
-            if has_model:
-                permission = RolePermission(model=model,read=read,create=create,write=write,delete=delete)
-                role.role_permissions.append(permission)
-        
-        db.session.add(role)
-        db.session.commit()
+            if form_data.get(read_string) == 'on': read, has_model = 1,True
+            if form_data.get(create_string) == 'on': create,has_model = 1,True
+            if form_data.get(write_string) == 'on': write,has_model = 1, True
+            if form_data.get(delete_string) == 'on': delete,has_model = 1,True
+
+            permissions.append({
+                'model_name': model.name,
+                'read': read,
+                'write': write,
+                'delete': delete,
+                'create': create
+            })
+
+        mongo.db.auth_user_roles.insert_one(
+            {
+                'name': form.name.data,
+                'permissions': permissions
+            }
+        )
+
         flash('Role added successfully!','success')
         return redirect(url_for('bp_auth.roles'))
 
 
-@bp_auth.route('/roles/<int:oid>/edit',methods=['GET','POST'])
+@bp_auth.route('/roles/<string:oid>/edit',methods=['GET','POST'])
 @login_required
 def edit_role(oid,**options):
-    role = Role.query.get_or_404(oid)
+    role = Role.find_one_by_id(oid)
     form = RoleEditForm(obj=role)
 
     if request.method == "GET":
-        role_permissions = RolePermission.query.filter_by(role_id=oid).all()
-        form.permission_inline.data = role_permissions
+        print(role.permissions)
+        form.permission_inline.data = role.permissions
         
         _scripts = [
-            {'bp_auth.static': 'js/role.js'},
             {'bp_admin.static': 'js/admin_edit.js'}
         ]
 
@@ -81,10 +116,42 @@ def edit_role(oid,**options):
             flash(str(key) + str(value), 'error')
         return redirect(url_for('bp_auth.roles'))
 
+    form_data = request.form
+    print(form_data)
+    permissions = []
+
+    models = CoreModel.find_all()
+
+    for model in models:
+
+        read,create,write,delete = 0,0,0,0
+
+        read_string = 'read_{}'.format(model.name)
+        create_string = 'create_{}'.format(model.name)
+        write_string = 'write_{}'.format(model.name)
+        delete_string = 'delete_{}'.format(model.name)
+
+        if read_string in request.form : read = True
+        if create_string in request.form : create = True
+        if write_string in request.form : write =  True
+        if delete_string in request.form : delete = True
+
+        permissions.append({
+            'model_name': model.name,
+            'read': read,
+            'write': write,
+            'delete': delete,
+            'create': create
+        })
+    
     try:
         role.name = form.name.data
-        role.updated_at = datetime.now()
-        db.session.commit()
+        role.updated_by = "{} {}".format(current_user.fname,current_user.lname)
+        role.set_updated_at()
+
+        role.permissions = permissions
+        role.save()
+
         flash('Role update Successfully!','success')
     except Exception as e:
         flash(str(e),'error')

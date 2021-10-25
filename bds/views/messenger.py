@@ -1,10 +1,11 @@
 from datetime import datetime
 from flask import redirect, url_for, request, flash
 from flask_login import current_user, login_required
-from app import db
+from app import mongo
 from app.admin.templating import admin_table, admin_edit
-from app.auth.models import User
+from app.auth.models import Role, User
 from bds import bp_bds
+from bds.globals import MESSENGER_ROLE
 from bds.models import Messenger
 from bds.forms import MessengerForm, MessengerEditForm
 
@@ -14,12 +15,26 @@ from bds.forms import MessengerForm, MessengerEditForm
 @login_required
 def messengers():
     form = MessengerForm()
-    fields = [User.id, User.username, User.fname, User.lname, User.email, User.created_at, User.updated_at]
-    models = [User]
-    query = User.query.with_entities(*fields).filter_by(role_id=2).all()
+    # fields = [User.id, User.username, User.fname, User.lname, User.email, User.created_at, User.updated_at]
+    fields = ['id', 'username', 'first name', 'last name', ' email', 'created_at', 'updated_at']
+    table_data = []
 
-    return admin_table(*models, fields=fields, form=form, create_url='bp_bds.create_messenger', \
-        edit_url="bp_bds.edit_messenger", module_name='bds', table_data=query)
+    query = Messenger.find_all_by_role_id(role_id=MESSENGER_ROLE.id)
+
+    messenger: User
+    for messenger in query:
+        table_data.append((
+            str(messenger.id),
+            messenger.username,
+            messenger.fname,
+            messenger.lname,
+            messenger.email,
+            messenger.created_at_local,
+            messenger.updated_at_local
+        ))
+
+    return admin_table(User, fields=fields, form=form, create_url='bp_bds.create_messenger', \
+        edit_url="bp_bds.edit_messenger", module_name='bds', table_data=table_data)
 
 
 @bp_bds.route('/messengers/create', methods=['POST'])
@@ -32,26 +47,27 @@ def create_messenger():
             flash(str(key) + str(value), 'error')
         return redirect(url_for('bp_bds.messengers'))
 
-    try:
-        new = User()
-        new.fname = form.fname.data
-        new.lname = form.lname.data
-        new.email = form.email.data if form.email.data != '' else None
-        new.username = form.username.data
-        new.role_id = 2
-        new.is_admin = 1 if form.is_admin.data == 'on' else 0
-        new.set_password("password")
-        new.is_superuser = 0
-        db.session.add(new)
-        db.session.commit()
-        flash('New messenger added successfully!','success')
-    except Exception as exc:
-        flash(str(exc), 'error')
+    # try:
+    new = Messenger()
+    new.fname = form.fname.data
+    new.lname = form.lname.data
+    new.email = form.email.data
+    new.username = form.username.data
+    new.role_id = MESSENGER_ROLE.id
+    new.role_name = MESSENGER_ROLE.name
+    new.is_admin = 1 if form.is_admin.data == 'on' else 0
+    new.set_password("password")
+    new.is_superuser = 0
+    new.save()
+
+    flash('New messenger added successfully!','success')
+    # except Exception as exc:
+    #     flash(str(exc), 'error')
 
     return redirect(url_for('bp_bds.messengers'))
 
 
-@bp_bds.route('/messengers/<int:oid>/edit',methods=['GET','POST'])
+@bp_bds.route('/messengers/<string:oid>/edit',methods=['GET','POST'])
 @login_required
 def edit_messenger(oid):
     ins = User.query.get_or_404(oid)

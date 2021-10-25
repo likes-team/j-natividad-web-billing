@@ -159,13 +159,14 @@ class SubAreaSubscriberInline(AdminInlineForm):
 class SubAreaForm(AdminTableForm):
     from .models import Area
 
-
     __table_columns__ = ['Name', 'description', 'Created at', 'updated at']
     __heading__ = "Sub areas"
 
     name = AdminField(label="Name",validators=[DataRequired()])
     description = AdminField(label="Description", required=False)
     area_id = AdminField(label="Area", validators=[DataRequired()], model=Area)
+
+    subscribers_inline = SubAreaSubscriberInline()
 
     @property
     def fields(self):
@@ -174,6 +175,9 @@ class SubAreaForm(AdminTableForm):
             [self.area_id]
         ]
 
+    @property
+    def inlines(self):
+        return [self.subscribers_inline]
 
 class SubAreEditForm(AdminEditForm):
     from .models import Area

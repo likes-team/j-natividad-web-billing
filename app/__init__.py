@@ -4,12 +4,9 @@ app/__init__.py
 Create our application
 """
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_cors import CORS
-from flask_mongoengine import MongoEngine
 from flask_pymongo import PyMongo
 from config import app_config
 
@@ -17,11 +14,8 @@ from config import app_config
 
 #                  -END-
 
-db : MongoEngine = MongoEngine()
 mongo = PyMongo()
-migrate = Migrate()
 csrf = CSRFProtect()
-cors = CORS()
 login_manager = LoginManager()
 
 # DEVELOPERS-NOTE: -INITIATE YOUR IMPORTS HERE-
@@ -52,11 +46,9 @@ def create_app(config_name):
     app.config.from_object(app_config[config_name])
     app.register_error_handler(500, internal_server_error)
 
-    db.init_app(app)
     mongo.init_app(app)
-    migrate.init_app(app, db)
     login_manager.init_app(app)
-    cors.init_app(app)
+    cors = CORS(app, resources={r"/*": {"origins": "*"}})
     csrf.init_app(app)
 
     # DEVELOPERS-NOTE: -INITIALIZE YOUR IMPORTS HERE-

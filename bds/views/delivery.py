@@ -1,18 +1,15 @@
+from re import sub
+from bson.objectid import ObjectId
 from bds.views.billing import billings
 from flask import (json, url_for, request,jsonify, abort)
 from flask_login import login_required
 from flask_cors import cross_origin
-from app import db, csrf
 from app.admin.templating import admin_render_template
 from bds import bp_bds
 from bds.models import Billing, Delivery, SubArea, Municipality, Subscriber, Area
+from app import mongo
 
 
-
-scripts = [
-    {'bp_bds.static': 'js/delivery.js'},
-    {'bp_bds.static': 'js/delivery_mdl_billing.js'}
-]
 
 modals = [
     'bds/delivery/bds_details_modal.html',
@@ -25,7 +22,7 @@ modals = [
 def deliveries():
     
     return admin_render_template(Delivery, 'bds/delivery/bds_delivery.html', 'bds', title="Delivery",\
-        modals=modals, scripts=scripts)
+        modals=modals)
 
 
 @bp_bds.route('/subscribers/<int:subscriber_id>/delivery', methods=['GET'])
@@ -108,21 +105,28 @@ def reset():
     return jsonify({'result':True})
 
 
-@bp_bds.route('/api/subscribers/<int:subscriber_id>/deliveries/deliver', methods=['POST'])
+@bp_bds.route('/api/subscribers/<string:subscriber_id>/deliveries/deliver', methods=['POST'])
 @cross_origin()
 def deliver(subscriber_id):
     billing_id = request.json['billing_id']
-    
-    delivery = Delivery.query.filter_by(
-        subscriber_id=subscriber_id, billing_id=billing_id, active=1
-        ).first()
 
-    if not delivery:
-        new = Delivery(subscriber_id, "IN-PROGRESS")
-        new.billing_id = billing_id
+    subscriber = Subscriber.find_one_by_id(id=subscriber_id)
+    sub_area = SubArea.find_one_by_id(id=subscriber.sub_area_id)
+    delivery_query = mongo.db.bds_deliveries.find_one({
+        'billing_id': ObjectId(billing_id),
+        'subscriber_id': subscriber.id,
+        'active': 1
+    })
 
-        db.session.add(new)
-        db.session.commit()
+    if not delivery_query:
+        new_delivery: Delivery = Delivery()
+        new_delivery.billing_id = ObjectId(billing_id)
+        new_delivery.subscriber_id = subscriber.id
+        new_delivery.sub_area_id = subscriber.sub_area_id
+        new_delivery.area_id = ObjectId(sub_area.area_id)
+        new_delivery.status = "IN-PROGRESS"
+        new_delivery.active = 1
+        new_delivery.save()
 
     response = jsonify({'result':True})
 
@@ -178,63 +182,61 @@ def deliver_all():
 @bp_bds.route('/api/get-municipality-areas', methods=["GET"])
 @cross_origin()
 def get_municipality_areas():
-
-    _municipality_name = request.args.get('municipality_name')
-    municipality = Municipality.query.filter_by(name=_municipality_name).first()
+    municipality_name = request.args.get('municipality_name')
+    municipality = Municipality.find_one_by_name(name=municipality_name)
 
     if municipality is None:
         return jsonify({'result': False})
 
+    areas = Area.find_all_by_municipality_id(municipality.id)
+
     data = []
-    for area in municipality.areas:
+    for area in areas:
         data.append({
-            'id': area.id,
+            'id': str(area.id),
             'name': area.name,
             'description': area.description
         })
-
     return jsonify({'result': data})
 
 
 @bp_bds.route('/api/get-area-sub-areas', methods=["GET"])
 @cross_origin()
 def get_area_sub_areas():
-
-    _area_name = request.args.get('area_name')
-    area = Area.query.filter_by(name=_area_name).first()
+    area_name = request.args.get('area_name')
+    area = Area.find_one_by_name(name=area_name)
 
     if area is None:
         return jsonify(({'result': False}))
     
     data = []
 
-    for sub_area in area.sub_areas:
+    sub_areas = SubArea.find_all_by_area_id(id=area.id)
+    sub_area: SubArea
+    for sub_area in sub_areas:
         data.append({
-            'id': sub_area.id,
+            'id': str(sub_area.id),
             'name': sub_area.name,
             'description': sub_area.description
         })
-
     return jsonify({'result': data})
 
 
 @bp_bds.route('/api/municipalities', methods=["GET"])
 @cross_origin()
 def get_municipalities():
-    municipalities = Municipality.query.all()
+    municipalities = Municipality.find_all()
 
     _data = []
-
+    municipality: Municipality
     for municipality in municipalities:
-
         _data.append({
-            'id': municipality.id,
+            'id': str(municipality.id),
             'name': municipality.name,
             'description': municipality.description
         })
 
     response = jsonify(_data)
-
     return response, 200
 
 
@@ -242,15 +244,16 @@ def get_municipalities():
 @cross_origin()
 def get_dtbl_billings():
 
-    billings = Billing.query.all()
+    billings = Billing.find_all()
 
     _data = []
 
+    billing: Billing
     for billing in billings:
         _data.append([
-            billing.id,
+            str(billing.id),
             billing.active,
-            billing.number,
+            billing.full_billing_no,
             billing.name,
             billing.date_from,
             billing.date_to,
