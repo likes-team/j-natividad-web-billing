@@ -37,23 +37,24 @@ def get_sub_area_subscribers(oid):
         if not sub_area:
             return jsonify({'data':[],'recordsTotal':0,'recordsFiltered':0,'draw':draw})
 
-        # if search_value == "":
-        #     query = Subscriber.query.filter_by(sub_area_id=sub_area.id)
-        # else:
-        #     query = Subscriber.query.filter_by(sub_area_id=sub_area.id)\
-        #         .filter(or_(Subscriber.lname.like(search_value),Subscriber.contract_no.like(search_value)))
-        print("START: ", start)
-        print("LENGTH: ", length)
 
-        print("SUBAREA: ", sub_area)
         query = list(mongo.db.auth_users.find({
             'role_id': SUBSCRIBER_ROLE.id,
             'sub_area_id': sub_area.id
         }).skip(start).limit(length))
 
-        print("query: ",query)
+        total_records = len(list(mongo.db.auth_users.find({
+            'role_id': SUBSCRIBER_ROLE.id,
+            'sub_area_id': sub_area.id
+        })))
 
-        total_records = len(query)
+        filtered_records = len(query)
+
+        print("START: ", start)
+        print("DRAW: ", draw)
+        print("LENGTH: ", length)
+        print("filtered_records: ", filtered_records)
+        print("total_records: ", total_records)
 
         for data in query:
             subscriber = Subscriber(data=data)
@@ -67,7 +68,6 @@ def get_sub_area_subscribers(oid):
             }))
 
             status = ""
-            print("delivery.status: ", delivery.status)
             if delivery.status is not None and delivery.status != '':
                 status = delivery.status
             else:
@@ -93,7 +93,7 @@ def get_sub_area_subscribers(oid):
 
         response = {
             'draw': draw,
-            'recordsTotal': total_records,
+            'recordsTotal': filtered_records,
             'recordsFiltered': total_records,
             'data': table_data
         }

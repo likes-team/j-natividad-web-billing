@@ -242,7 +242,6 @@ class Delivery(BaseModel, Admin):
     delivery_latitude: Decimal = None
 
     def __init__(self, data=None):
-        print("DELIVERYDATA: ",data)
         super(Delivery, self).__init__(data=data)
 
         if data is not None:
