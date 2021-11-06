@@ -1,0 +1,30 @@
+<div id="mdl_search_area" class="modal fade bd-example-modal-sm" tabindex="-1" role="dialog"
+    aria-labelledby="mySmallModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search Area</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="position-relative form-group">
+                    <label for="select_area" class="">Area</label>
+                    <select name="select" id="select_area" class="form-control">
+                        <option value="">Choose...</option>
+
+                        {% for area in areas %}
+                            <option value="{{area.id}}">{{ area.name }}</option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button id="btn_confirm" type="button" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>

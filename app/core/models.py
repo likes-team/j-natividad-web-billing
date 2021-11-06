@@ -153,17 +153,24 @@ class CoreModule(BaseModel):
 
     def __init__(self, data=None):
         super(CoreModule, self).__init__(data=data)
-        self.name = data.get('name', '')
-        self.short_description = data.get('short_description', '')
-        self.long_description = data.get('long_description', '')
-        self.status = data.get('status', '')
-        self.version = data.get('version', '')
-        self.models = data.get('models', [])
+
+        if data is not None:
+            self.name = data.get('name', '')
+            self.short_description = data.get('short_description', '')
+            self.long_description = data.get('long_description', '')
+            self.status = data.get('status', '')
+            self.version = data.get('version', '')
+            self.models = data.get('models', [])
 
     @classmethod
     def find_by_id(cls, id):
         return cls(data=cls.__collection__.find_one({'_id': ObjectId(id)}))
 
+    @classmethod
+    def find_one_by_name(cls, name):
+        query = cls.__collection__.find_one({'name': name})
+
+        return cls(data=query)
 
 class CoreModel(BaseModel):
     __collection__ = mongo.db.core_models
@@ -176,10 +183,12 @@ class CoreModel(BaseModel):
 
     def __init__(self, data=None):
         super(CoreModel, self).__init__(data=data)
-        self.name = data.get('name', '')
-        self.description = data.get('description', '')
-        self.admin_included = data.get('admin_included', True)
-        self._module = CoreModule(data=data['module'][0]) if 'module' in data else None
+        
+        if data is not None:
+            self.name = data.get('name', '')
+            self.description = data.get('description', '')
+            self.admin_included = data.get('admin_included', True)
+            self._module = CoreModule(data=data['module'][0]) if 'module' in data else None
 
     @property
     def module(self):
@@ -192,16 +201,23 @@ class CoreModel(BaseModel):
             {"$lookup": {"from": "core_modules", "localField": "module_id",
                          "foreignField": "_id", 'as': "module"}}
         ])
+        data = list(query)
 
-        return cls(data=list(query)[0])
+        if len(data) <= 0:
+            return None
+        return cls(data=data[0])
 
 
 class CoreCity(BaseModel):
+    __collection__ = mongo.db.core_cities
+
     name: str
     province: str
 
 
 class CoreProvince(BaseModel):
+    __collection__ = mongo.db.core_provinces
+
     name: str
 
 

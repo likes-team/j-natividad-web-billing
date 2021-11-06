@@ -25,122 +25,121 @@ def core_install():
 
     print("Installing...")
 
-    try:
+    # try:
+    if platform.system() == "Windows":
+        provinces_path = basedir + "\\app" + "\\core" + "\\csv" + "\\provinces.csv"
+        cities_path = basedir + "\\app" + "\\core" + "\\csv" + "\\cities.csv"
+    elif platform.system() == "Linux":
+        provinces_path = basedir + "/app/core/csv/provinces.csv"
+        cities_path = basedir + "/app/core/csv/cities.csv"
+    else:
+        raise Exception("Platform not supported yet.")
+    
+    module_count = 0
 
-        if platform.system() == "Windows":
-            provinces_path = basedir + "\\app" + "\\core" + "\\csv" + "\\provinces.csv"
-            cities_path = basedir + "\\app" + "\\core" + "\\csv" + "\\cities.csv"
-        elif platform.system() == "Linux":
-            provinces_path = basedir + "/app/core/csv/provinces.csv"
-            cities_path = basedir + "/app/core/csv/cities.csv"
-        else:
-            raise Exception("Platform not supported yet.")
-        
-        module_count = 0
+    homebest_module = None
 
-        homebest_module = None
+    for module in MODULES:
+        print(module)
+        # TODO: Iimprove to kasi kapag nag error ang isa damay lahat dahil sa last_id
+        homebest_module = CoreModule.find_one_by_name(name=module.module_name)
+        # last_id = 0
+        if not homebest_module:
+            new_module = CoreModule()
+            new_module.name = module.module_name
+            new_module.short_description = module.short_description
+            new_module.long_description = module.long_description
+            new_module.status = 'installed'
+            new_module.version = module.version
+            new_module.save()
 
-        for module in MODULES:
-            # TODO: Iimprove to kasi kapag nag error ang isa damay lahat dahil sa last_id
-            homebest_module = CoreModule.objects(name=module.module_name).first()
-            # last_id = 0
-            if not homebest_module:
-                new_module = CoreModule(
-                    name=module.module_name,
-                    short_description=module.module_short_description,
-                    long_description=module.module_long_description,
-                    status='installed',
-                    version=module.version
-                    ).save()
+            homebest_module = new_module
+                
+            print("MODULE - {}: SUCCESS".format(new_module.name))
+            # last_id = new_module.id
 
-                homebest_module = new_module
-                    
-                print("MODULE - {}: SUCCESS".format(new_module.name))
-                # last_id = new_module.id
+        model_count = 0
 
-            model_count = 0
+        for model in module.models:
+            homebestmodel = CoreModel.find_one_by_name(name=model.__amname__)
 
-            for model in module.models:
-                homebestmodel = CoreModel.objects(name=model.__amname__).first()
+            if not homebestmodel:
+                new_model = CoreModel()
+                new_model.name = model.__amname__
+                new_model.module_id = homebest_module.id
+                new_model.description=model.__amdescription__
+                new_model.save()
 
+                print("MODEL - {}: SUCCESS".format(new_model.name))
+
+            model_count = model_count + 1
+
+        if len(module.no_admin_models) > 0 :
+            for xmodel in module.no_admin_models:
+                homebestmodel = CoreModel.find_one_by_name(name=xmodel.__amname__)
+                
                 if not homebestmodel:
-                    new_model = CoreModel(
-                        name=model.__amname__,
-                        module=homebest_module,
-                        description=model.__amdescription__,
-                        ).save()
+                    new_model = CoreModel()
+                    new_model.name = model.__amname__
+                    new_model.module_id = homebest_module.id
+                    new_model.description=model.__amdescription__
+                    new_model.admin_included = False
+                    new_model.save()
 
                     print("MODEL - {}: SUCCESS".format(new_model.name))
 
-                model_count = model_count + 1
+        module_count = module_count + 1
 
-            if len(module.no_admin_models) > 0 :
+    print("Inserting provinces to database...")
+    if CoreProvince.count() < 88:
+        with open(provinces_path) as f:
+            csv_file = csv.reader(f)
 
-                for xmodel in module.no_admin_models:
-                    homebestmodel = CoreModel.objects(name=xmodel.__amname__).first()
+            for id, row in enumerate(csv_file):
+                if not id == 0:
+                    CoreProvince(
+                        name=row[2]
+                    ).save()
+
+        print("Provinces done!")
+
+    else:
+        print("Provinces exists!")
+    print("")
+    print("Inserting cities to database...")
+    
+    if CoreCity.count() < 1647:
+        with open(cities_path) as f:
+            csv_file = csv.reader(f)
+
+            for id,row in enumerate(csv_file):
+                if not id == 0:
                     
-                    if not homebestmodel:
-                        new_model = CoreModel(
-                            name=xmodel.__amname__, 
-                            module=homebest_module,
-                            description=xmodel.__amdescription__,
-                            admin_included=False
-                        ).save()
+                    CoreCity(
+                        name=row[2]
+                    ).save()
 
-                        print("MODEL - {}: SUCCESS".format(new_model.name))
+        print("Cities done!")
+    else:
+        print("Cities exists!")
 
-            module_count = module_count + 1
-
-        print("Inserting provinces to database...")
-        if CoreProvince.objects.count() < 88:
-            with open(provinces_path) as f:
-                csv_file = csv.reader(f)
-
-                for id, row in enumerate(csv_file):
-                    if not id == 0:
-                        CoreProvince(
-                            name=row[2]
-                        ).save()
-
-            print("Provinces done!")
-
-        else:
-            print("Provinces exists!")
-        print("")
-        print("Inserting cities to database...")
+    print("Inserting system roles...")
+    if Role.count() > 0:
+        print("Role already inserted!")
+    else:
+        Role(
+            name="Admin",
+        ).save()
         
-        if CoreCity.objects.count() < 1647:
-            with open(cities_path) as f:
-                csv_file = csv.reader(f)
+        print("Admin role inserted!")
 
-                for id,row in enumerate(csv_file):
-                    if not id == 0:
-                        
-                        CoreCity(
-                            name=row[2]
-                        ).save()
+    if not User.count() > 0:
+        print("Creating a SuperUser/owner...")
+        _create_superuser()
 
-            print("Cities done!")
-        else:
-            print("Cities exists!")
-
-        print("Inserting system roles...")
-        if Role.objects.count() > 0:
-            print("Role already inserted!")
-        else:
-            Role(
-                name="Admin",
-            ).save()
-            
-            print("Admin role inserted!")
-
-        if not User.objects.count() > 0:
-            print("Creating a SuperUser/owner...")
-            _create_superuser()
-
-    except Exception as exc:
-        print(str(exc))
-        return False
+    # except Exception as exc:
+    #     print(str(exc))
+    #     return False
 
     return True
 

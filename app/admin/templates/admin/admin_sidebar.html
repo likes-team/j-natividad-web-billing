@@ -34,7 +34,6 @@
         <div class="app-sidebar__inner">
             <ul class="vertical-nav-menu">
                 {% if VDATA['sidebar'] is not none %}
-                
                     {% for header, models in VDATA['sidebar'].items() %}
                         <li class="app-sidebar__heading">{{header}}</li>
                         {% for model in models %}

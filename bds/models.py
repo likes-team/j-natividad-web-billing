@@ -129,6 +129,13 @@ class DeliveryMap(Admin):
     __view_url__ = 'bp_bds.delivery_map'
 
 
+class Dashboard(Admin):
+    __amname__ = 'dashboard'
+    __amdescription__ = 'Dashboard'
+    __amicon__ = 'pe-7s-map-2'
+    __view_url__ = 'bp_bds.dashboard'
+
+
 class Messenger(User):
     __tablename__ = 'auth_users'
     __amname__ = 'user'

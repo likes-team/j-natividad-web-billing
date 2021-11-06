@@ -9,4 +9,4 @@ from bds import bp_bds
 def reports():
     CONTEXT['module'] = 'bds'
     CONTEXT['active'] = 'report'
-    return render_template('bds/bds_dashboard.html',context=CONTEXT, title="Reports")
+    return render_template('bds/map.html',context=CONTEXT, title="Reports")

@@ -1,0 +1,180 @@
+{% extends 'admin/admin_dashboard.html' %}
+
+
+{% block scripts %}
+<script>
+    const MONTHS = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+    ];
+
+    const CHART_COLORS = {
+        red: 'rgb(255, 99, 132)',
+        orange: 'rgb(255, 159, 64)',
+        yellow: 'rgb(255, 205, 86)',
+        green: 'rgb(75, 192, 192)',
+        blue: 'rgb(54, 162, 235)',
+        purple: 'rgb(153, 102, 255)',
+        grey: 'rgb(201, 203, 207)'
+      };
+
+    function months(config) {
+        var cfg = config || {};
+        var count = cfg.count || 12;
+        var section = cfg.section;
+        var values = [];
+        var i, value;
+      
+        for (i = 0; i < count; ++i) {
+          value = MONTHS[Math.ceil(i) % 12];
+          values.push(value.substring(0, section));
+        }
+      
+        return values;
+      }
+
+      function updateData(chart, labels, datasets) {
+        removeData(chart);
+        chart.config.data.labels = labels;
+        chart.config.data.datasets = datasets;
+        chart.update();
+      };
+
+      function removeData(chart) {
+        chart.data.labels.pop();
+        chart.data.datasets.forEach((dataset) => {
+            dataset.data.pop();
+        });
+        chart.update();
+    }
+
+    $(document).ready(function () {
+        const DATA_COUNT = 7;
+        const NUMBER_CFG = { count: DATA_COUNT, min: -100, max: 100 };
+            //{
+            //    label: 'Delivered',
+            //    data: [50, 20],
+            //    backgroundColor: CHART_COLORS.red,
+            //},
+            //{
+            //    label: 'Pending',
+            //    data: [15, 30],
+            //    backgroundColor: CHART_COLORS.blue,
+            //},
+            //{
+            //    label: 'In-Progress',
+            //    data: [20, 40],
+            //    backgroundColor: CHART_COLORS.green,
+            //},
+        const data = {
+            labels: [],
+            datasets: []
+        };
+
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                title: {
+                  display: true,
+                  text: 'Area Name'
+            },
+              responsive: true,
+              scales: {
+                xAxes: [{
+                    stacked: true
+                }],
+                yAxes: [{
+                    stacked: true
+                }]
+            }
+            }
+          };
+
+        const ctx = document.getElementById('chart_area_summary');
+        const myChart = new Chart(ctx, config);
+
+        $("#btn_confirm").click(function(){
+            var selectedAreaId = $("#select_area").find(":selected").val();
+            var selectedAreaName = $("#select_area").find(":selected").text();
+
+            $.getJSON(
+                `/bds/dashboard/areas/${selectedAreaId}/billings/6177a0070efaa254673cc9d8/data`, function(response){
+                console.log(response);
+
+                myChart.options.title.text = selectedAreaName;
+                updateData(myChart, response.data.labels, response.data.datasets);
+            })
+        });
+    });
+</script>
+{% endblock %}
+
+
+{% block content %}
+<div class="app-main__inner">
+    <div class="app-page-title">
+        <div class="page-title-wrapper">
+            <div class="page-title-heading">
+                <div class="page-title-icon">
+                    <i class="pe-7s-map-2 icon-gradient bg-mean-fruit">
+                    </i>
+                </div>
+                <div>Dashboard
+                    <div class="page-title-subheading">
+                        Data Summaries
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="main-card mb-3 card">
+                <div class="card-header">Area Summary
+                    <div class="btn-actions-pane-right">
+                        <div role="group" class="btn-group-sm btn-group">
+                            <button type="button" data-toggle="modal" data-target="#mdl_search_area"
+                                class="btn btn-info">
+                                <span class="btn-icon-wrapper pr-2 opacity-7">
+                                    <i class="fa fa-search fa-w-20"></i>
+                                </span>
+                                Select Area</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- <div class="chartjs-size-monitor"
+                        style="position: absolute; inset: 0px; overflow: hidden; pointer-events: none; visibility: hidden; z-index: -1;">
+                        <div class="chartjs-size-monitor-expand"
+                            style="position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;visibility:hidden;z-index:-1;">
+                            <div style="position:absolute;width:1000000px;height:1000000px;left:0;top:0"></div>
+                        </div>
+                        <div class="chartjs-size-monitor-shrink"
+                            style="position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;visibility:hidden;z-index:-1;">
+                            <div style="position:absolute;width:200%;height:200%;left:0; top:0"></div>
+                        </div>
+                    </div> -->
+                    <canvas id="chart_area_summary" height="350" class="chartjs-render-monitor"
+                        style="display: block; width: 341px; height: 170px;" width="895"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block modals%}
+{% include 'bds/dashboard_search_area_modal.html' %}
+{% endblock %}
