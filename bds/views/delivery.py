@@ -165,6 +165,56 @@ def deliver(subscriber_id):
     return response
 
 
+@bp_bds.route('/subscribers/<string:contract_no>/deliveries', methods=['POST'])
+@cross_origin()
+def deliver_subscriber_delivery(contract_no):
+    try:
+        billing_id = request.json['billing_id']
+        subscribers = Subscriber.find_all_by_contract_no(contract_no=contract_no)
+
+        print(len(subscribers))
+
+        if subscribers is None:
+            raise Exception("Likes Error: No subscriber found")
+
+        if len(subscribers) > 1:
+            raise Exception("Likes Error: Multiple subscriber with same contract no.")
+
+        subscriber: Subscriber = subscribers[0]
+
+        sub_area = SubArea.find_one_by_id(id=subscriber.sub_area_id)
+        delivery_query = mongo.db.bds_deliveries.find_one({
+            'billing_id': ObjectId(billing_id),
+            'subscriber_id': subscriber.id,
+            'active': 1
+        })
+
+        response = {
+            'status': 'success',
+            'data': {},
+            'message': ""
+        }
+        response['message'] = "Already scanned"
+
+        if not delivery_query:
+            new_delivery: Delivery = Delivery()
+            new_delivery.billing_id = ObjectId(billing_id)
+            new_delivery.subscriber_id = subscriber.id
+            new_delivery.sub_area_id = subscriber.sub_area_id
+            new_delivery.area_id = ObjectId(sub_area.area_id)
+            new_delivery.status = "IN-PROGRESS"
+            new_delivery.active = 1
+            new_delivery.save()
+            response['message'] = "Success"
+
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 200
+
+
 @bp_bds.route('/api/deliveries/reset-all', methods=['POST'])
 @cross_origin()
 def reset_all():

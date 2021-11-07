@@ -57,6 +57,32 @@ def billings():
             table_data=table_data)
 
 
+@bp_bds.route('/billings/<string:billing_id>', methods=['GET'])
+@login_required
+def get_billing_details(billing_id):
+    try:
+        billing = Billing.find_one_by_id(id=billing_id)
+
+        response = {
+            'status': 'success',
+            'data': {
+                'id': str(billing.id),
+                'billing_no': billing.full_billing_no,
+                'name': billing.name,
+                'description': billing.description,
+                'date_from': billing.date_from,
+                'date_to': billing.date_to
+            },
+            'message': ""
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 200
+
+
 @bp_bds.route('/billings/create',methods=['POST'])
 @login_required
 def create_billing():

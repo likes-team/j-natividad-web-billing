@@ -5,11 +5,12 @@ from bson.objectid import ObjectId
 from flask_cors.decorator import cross_origin
 from werkzeug.utils import secure_filename
 from flask import (jsonify, request, current_app)
-from app import csrf, mongo
+from app import S3, csrf, mongo
 from app.auth.models import User
 from bds import bp_bds
 from bds.models import Billing, Delivery, Messenger, Subscriber, Area, SubArea
 from bds.views.delivery import deliver
+import boto3
 
 
 @bp_bds.route('/api/confirm-deliver', methods=['POST'])
@@ -233,3 +234,13 @@ def _isCoordsNear(checkPointLng, checkPointLat, centerPoint: Subscriber, km):
     dy = abs(float(centerPoint.latitude) - float(checkPointLat)) * ky
     print("_isCoordsNear Result:", sqrt(dx * dx + dy * dy) <= km)
     return sqrt(dx * dx + dy * dy) <= km
+
+
+def upload_file(file_name, bucket):
+    # object_name = file_name
+    # s3_client = boto3.client('s3')
+    # response = s3_client.upload_file(file_name, bucket, object_name)
+    # return response
+
+    S3.Bucket('likes-bucket').upload_file()
+

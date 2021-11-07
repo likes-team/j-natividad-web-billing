@@ -1,6 +1,7 @@
 from datetime import datetime
 from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash
+from flask.json import jsonify
 from flask_login import current_user, login_required
 from app import mongo
 from app.admin.templating import admin_render_template, admin_table, admin_edit
@@ -42,7 +43,32 @@ def messengers():
 
     return admin_table(User, fields=fields, form=form, create_url='bp_bds.create_messenger', \
         edit_url="bp_bds.edit_messenger", module_name='bds', table_data=table_data, \
-            create_button=True, create_modal=False)
+            create_button=True, create_modal=False, table_template="bds/messenger/messenger_table.html")
+
+
+@bp_bds.route('/messengers/<string:messenger_id>')
+@login_required
+def get_messenger_details(messenger_id):
+    try:
+        messenger = User.find_one_by_id(id=messenger_id)
+
+        response = {
+            'status': 'success',
+            'data': {
+                'id': str(messenger.id),
+                'fname': messenger.fname,
+                'lname': messenger.lname,
+                'username': messenger.username,
+                'email': messenger.email,
+            }
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 200
+
 
 
 @bp_bds.route('/messengers/create', methods=["GET",'POST'])

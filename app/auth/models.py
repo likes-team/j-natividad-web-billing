@@ -163,8 +163,30 @@ class User(UserMixin, BaseModel, Admin):
                 {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
                             "foreignField": "_id", 'as': "role"}},
             ])
-
         return cls(data=list(query)[0])
+
+    @classmethod
+    def find_all_by_contract_no(cls, contract_no, session=None):
+        if session:
+            query = list(cls.__collection__.aggregate([
+                {"$match": {"contract_no": contract_no}},
+                {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
+                            "foreignField": "_id", 'as': "role"}},
+            ],session=session))
+        else:
+            query = list(cls.__collection__.aggregate([
+                {"$match": {"contract_no": contract_no}},
+                {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
+                            "foreignField": "_id", 'as': "role"}},
+            ]))
+
+        if len(query) <= 0:
+            raise Exception("Likes Error: No subscriber found")
+
+        data = []
+        for subscriber in query:
+            data.append(cls(data=subscriber))
+        return data
 
     @classmethod
     def find_all(cls):

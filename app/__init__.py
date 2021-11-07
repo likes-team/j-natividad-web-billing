@@ -3,6 +3,7 @@ app/__init__.py
 ====================================
 Create our application
 """
+import boto3
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
@@ -28,6 +29,8 @@ MODULES = []
 CONTEXT = {
     'system_modules': []
 }
+
+S3 = boto3.resource("s3")
 
 
 def internal_server_error(e):

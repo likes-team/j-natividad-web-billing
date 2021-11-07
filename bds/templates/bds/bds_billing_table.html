@@ -15,62 +15,65 @@
                     </div>
                 </div>
             </div>
-            
+
             {% block actions %}
 
-                {% if TABLE_OPTIONS['actions'] %}
-                    {% include TABLE_OPTIONS['action_template'] %}
-                {% endif %}
+            {% if TABLE_OPTIONS['actions'] %}
+            {% include TABLE_OPTIONS['action_template'] %}
+            {% endif %}
 
             {% endblock %}
-            
+
         </div>
     </div>
     <div class="row">
         <div class="col-md-12">
             <div class="main-card mb-3 card">
-                    <div class="table-responsive">
+                <div class="table-responsive">
                     <table id="index_table" class="align-middle mb-0 table table-bordered table-striped table-hover">
                         <thead>
-                        <tr>
-                            <th class="text-center"></th>
-                            {% for column in TABLE_OPTIONS['table_columns'] %}
-                            <th class="text-center">{{ column.upper() }}</th>
-                            {% endfor %}
-                        </tr>
+                            <tr>
+                                <th class="text-center"></th>
+                                {% for column in TABLE_OPTIONS['table_columns'] %}
+                                <th class="text-center">{{ column.upper() }}</th>
+                                {% endfor %}
+                            </tr>
                         </thead>
                         <tbody>
-                            
+
                             {% for row_data in TABLE_OPTIONS['table_data'] %}
 
-                                {% if TABLE_OPTIONS['view_modal'] %}
-                                    <tr class="item row_object" id="{{row_data[0]}}"  data-toggle="modal" data-target="#viewModal">
-                                    <param id="param_{{row_data[0]}}" name="param_{{row_data[0]}}" {% if TABLE_OPTIONS['edit_url'] %} value="{{url_for(TABLE_OPTIONS['edit_url'],oid=row_data[0])}}" {% endif %}>
+                            {% if TABLE_OPTIONS['view_modal'] %}
+                            <tr class="item row_object" id="{{row_data[0]}}" data-toggle="modal"
+                                data-target="#viewModal">
+                                <param id="param_{{row_data[0]}}" name="param_{{row_data[0]}}" {% if
+                                    TABLE_OPTIONS['edit_url'] %}
+                                    value="{{url_for(TABLE_OPTIONS['edit_url'],oid=row_data[0])}}" {% endif %}>
                                 {% else %}
-                                    <tr class="item row_object" id="{{row_data[0]}}">
+                            <tr class="item row_object" id="{{row_data[0]}}">
                                 {% endif %}
 
-                                    <!-- TEMPORARY conversion ng boolean word 'true' to 'YES' and 'false' to 'NO' -->
-                                    <td class="text-center"></td>
+                                <!-- TEMPORARY conversion ng boolean word 'true' to 'YES' and 'false' to 'NO' -->
+                                <td class="text-center"></td>
 
-                                    {% for value in row_data %}
-                                        {% if loop.index > 1 %}
+                                {% for value in row_data %}
+                                {% if loop.index > 1 %}
 
-                                            <td class="text-center">
-                                                {% if value == none %}
-                                                {% elif value == true %}
-                                                <div class="mb-2 mr-2 badge badge-pill badge-success">ACTIVE</div>
-                                                {% elif value == false %}
-                                                <div class="mb-2 mr-2 badge badge-pill badge-secondary">INACTIVE</div>
-                                                <!-- pass -->
-                                                {% else %}
-                                                    {{value}}
-                                                {% endif %}
-                                            </td>
+                                <td class="text-center">
+                                    {% if value == none %}
+                                    {% elif value == true %}
+                                    <div class="mb-2 mr-2 badge badge-pill badge-success">ACTIVE</div>
+                                    {% elif value == false %}
+                                    <div class="mb-2 mr-2 badge badge-pill badge-secondary">INACTIVE</div>
+                                    <!-- pass -->
+                                    {% else %}
+                                    {{value}}
+                                    {% endif %}
+                                </td>
 
-                                        {% endif %}
-                                    {% endfor %}
-                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tr>
                             {% endfor %}
 
                         </tbody>
@@ -87,195 +90,40 @@
 <script>
     var dtbl_table;
 
-$(document).ready(function(){
-
-    var js_fields_array = JS_FIELDS.split(",");
-
-    for (i=0; i < js_fields_array.length; i++){
-        js_fields_array[i] = js_fields_array[i].replace('[', '');
-        js_fields_array[i] = js_fields_array[i].replace(']', '');
-        js_fields_array[i] = js_fields_array[i].replace('"', '');
-        js_fields_array[i] = js_fields_array[i].replace('"', '');
-        js_fields_array[i] = js_fields_array[i].replace(/\s/g, '');
-    }
-
-
-    $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
-            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", CSRF_TOKEN);
-            }
-        }
-    });
-
-
-    dtbl_table = $('#index_table').DataTable({
-        "dom": 'rtip',
-        "pageLength": 20,
-        "order": [[ 1, 'asc' ]]
-    });
-
-
-    dtbl_table.on( 'order.dt search.dt', function () {
-        dtbl_table.column(0, {search:'applied', order:'applied'}).nodes().each( function (cell, i) {
-            cell.innerHTML = i+1;
-        } );
-    } ).draw();
-
-
-    $('.search-input').on('keyup', function () {
-        dtbl_table.search(this.value).draw();
-    } );
-
-
-    $("#index_table tbody").on('click','.row_object',function(){
-
-        if (VIEW_MODAL != 'True'){
-            return;
-        }
-
-        var id = '#param_' + $(this).attr('id');
-        
-        if($("#view_edit_button").length){
-            const view_url = $(id).attr('value');
-            document.getElementById("view_edit_button").setAttribute("href", view_url);
-        }
-
-        var ctr;
-        var field;
-        var field_id = $(this).attr('id');
-        
-        for (ctr=0; ctr < js_fields_array.length; ctr++){
-            $.ajax({
-                url: `${VIEW_MODAL_URL}?table=${TABLE_NAME}&column=${js_fields_array[ctr]}&id=${field_id}`,
-                type: "GET",
-                contentType: "application/json; charset=utf-8",
-                success: function(data) {
-                    if (data.result){
-                        field = "#view_" + data.column;
-                        var input_type = $(field).attr('type');
-                        if (input_type == 'checkbox'){
-                            if (data.result == '1'){
-                                $(field).attr('checked',true);
-                            }else{
-                                $(field).attr('checked', false);
-                            }
-                        }else{
-                            $(field).val(data.result);
-                        }
-                    }
-                }
-            });
-        }
-        
-    });
-
-
-    $("#btndelete").click(function(){
-        if($('#btndelete').text()=='Delete'){
-            $('#nav_action_btns').after("<button id='btn_confirm_delete' type='button' tabindex='1' class='dropdown-item'>Confirm Delete</button>");
-            $('#btndelete').html("Cancel");
-            $("tr").removeAttr("data-toggle");
-            $("tr").find("th:last").after('<th>DELETE</th>');
-            $("tr").find("td:last").after("<td><input class='chkbox' type='checkbox'></td>");
-            var ids = [];
-            $("#btn_confirm_delete").click(function(){
-                $("tr.item").each(function() {
-                    var check = $(this).find("input.chkbox").is(':checked');
-                    if(check){
-                        ids.push(this.id)
-                    }
-                });
-
-                $.ajax({
-                    url: "/admin/delete-data",
-                    type: "POST",
-                    dataType: "json",
-                    data: JSON.stringify({'ids': ids,'table':TABLE_NAME}),
-                    contentType: "application/json; charset=utf-8",
-                    success: function(data) {
-                        if(data.result == 2){
-                            alert("Must check some row!");
-                        }else{
-                            location.reload();
-                        }
-                    }
-                });
-            });
-        }else{
-            $("#btn_confirm_delete").remove();
-            $('#btndelete').html("Delete");
-            $("tr").attr("data-toggle","modal");
-            $("tr").find("th:last").remove();
-            $("tr").find("td:last").remove();
-        }
-    });
-
-
-    $("#username").change(function(){
-        var username = document.getElementById("username").value;
-       
-        $.ajax({
-            url: "/auth/username_check",
-            type: "POST",
-            dataType: "json",
-            data: JSON.stringify({'username': username}),
-            contentType: "application/json; charset=utf-8",
-            success: function(data) {
-                if(data.result == 1){
-                    $("#username-invalid-feedback").text("Please provide a valid Username");
-                    document.getElementById("username-invalid-feedback").style.display = "none";
-                    document.getElementById("username-valid-feedback").style.display = "block";
-                }else{
-                    $("#username-invalid-feedback").text("Username is already taken.");
-                    document.getElementById("username-valid-feedback").style.display = "none";
-                    document.getElementById("username-invalid-feedback").style.display = "block";
-                }
-            }
-        });
-    });
-    $("#email").change(function(){
-        var email = document.getElementById("email").value;
-
-        $.ajax({
-            url: "/auth/_email_check",
-            type: "POST",
-            dataType: "json",
-            data: JSON.stringify({'email': email}),
-            contentType: "application/json; charset=utf-8",
-            success: function(data) {
-                if(data.result == 1){
-                    $("#email-invalid-feedback").text("Please provide a valid Email");
-                    document.getElementById("email-invalid-feedback").style.display = "none";
-                    document.getElementById("email-valid-feedback").style.display = "block";
-                }else{
-                    $("#email-invalid-feedback").text("Email is already taken.");
-                    document.getElementById("email-valid-feedback").style.display = "none";
-                    document.getElementById("email-invalid-feedback").style.display = "block";
-                }
-            }
-        });
-    });
-});
-</script>
-
-<script>
-    $(document).ready(function(){
+    $(document).ready(function () {
         var BILLINGID;
         var ROWSTATUS;
-    
-        $("#index_table tbody").on('click','.row_object',function(){
-    
+
+        dtbl_table = $('#index_table').DataTable({
+            "dom": 'rtip',
+            "pageLength": 20,
+            "order": [[1, 'asc']]
+        });
+
+        dtbl_table.on('order.dt search.dt', function () {
+            dtbl_table.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                cell.innerHTML = i + 1;
+            });
+        }).draw();
+
+
+        $('.search-input').on('keyup', function () {
+            dtbl_table.search(this.value).draw();
+        });
+
+
+        $("#index_table tbody").on('click', '.row_object', function () {
+
             var $row = $(this).closest('tr');
-    
+
             // Get row data
             var data = dtbl_table.row($row).data();
-    
+
             BILLINGID = data.DT_RowId;
-    
+
             var row_status = data[1];
-            
-            if(row_status == `<div class="mb-2 mr-2 badge badge-pill badge-success">ACTIVE</div>`){
+
+            if (row_status == `<div class="mb-2 mr-2 badge badge-pill badge-success">ACTIVE</div>`) {
                 ROWSTATUS = 0;
                 $("#btn_active_toggle").html('Set Inactive');
                 $("#btn_active_toggle").removeClass("btn-success").addClass("btn-secondary");
@@ -284,13 +132,13 @@ $(document).ready(function(){
                 $("#btn_active_toggle").html('Set Active');
                 $("#btn_active_toggle").removeClass("btn-secondary").addClass("btn-success");
             }
-        
+
         });
-    
-    
-        $("#btn_active_toggle").click(function(){
+
+
+        $("#btn_active_toggle").click(function () {
             const url = "/bds/billings/" + BILLINGID + "/set-active";
-    
+
             $.ajax({
                 url: url,
                 type: "POST",
@@ -302,8 +150,8 @@ $(document).ready(function(){
                 success: function (data) {
                     if (data.result) {
                         location.reload();
-    
-                        if(ROWSTATUS){
+
+                        if (ROWSTATUS) {
                             $("#btn_active_toggle").html('Set Inactive');
                             $("#btn_active_toggle").removeClass("btn-success").addClass("btn-secondary");
                         } else {
@@ -314,7 +162,39 @@ $(document).ready(function(){
                 }
             });
         });
+
+
+        $("#index_table tbody").on('click', '.row_object', function () {
+            if (VIEW_MODAL != 'True') {
+                return;
+            }
+
+            var id = $(this).attr('id');
+
+            if ($("#view_edit_button").length) {
+                const view_url = $(id).attr('value');
+                document.getElementById("view_edit_button").setAttribute("href", view_url);
+            }
+
+
+            $.getJSON(`/bds/billings/${id}`, function(response){
+                $("#view_number").val('');
+                $("#view_name").val('');
+                $("#view_description").val('');
+                $("#view_date_from").val('');
+                $("#view_date_to").val('');
     
+                if(response.status == "error"){
+                    alert(`Error Occured, please try again. \n ${response.message}`);
+                } else if(response.status == "success"){
+                    $("#view_number").val(response.data.billing_no);
+                    $("#view_name").val(response.data.name);
+                    $("#view_description").val(response.data.description);
+                    $("#view_date_from").val(response.data.date_from);
+                    $("#view_date_to").val(response.data.date_to);
+                }
+            });
+        });
     });
 </script>
 {% endblock%}

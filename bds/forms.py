@@ -100,11 +100,10 @@ class MessengerForm(AdminTableForm):
     email = AdminField(label='Email', type='email',required=False)
     fname = AdminField(label='First Name', validators=[DataRequired()])
     lname = AdminField(label='Last Name', validators=[DataRequired()])
-    is_admin = AdminField(label='Is admin?',required=False, type='checkbox')
 
     @property
     def fields(self):
-        return [[self.fname, self.lname],[self.username,self.email],[self.is_admin]]
+        return [[self.fname, self.lname],[self.username,self.email]]
 
 
 class MessengerAreasInline(AdminInlineForm):
