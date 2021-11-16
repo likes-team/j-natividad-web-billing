@@ -103,13 +103,16 @@ def confirm_deliver():
         print("Image file is none!")
         return jsonify({'result': False})
 
-    filename = secure_filename(img_file.filename)
-
-    _img_path = os.path.join(current_app.config['UPLOAD_IMAGES_FOLDER'], filename)
+    bucket = S3.Bucket('likes-bucket')
+    bucket.Object(img_file.filename).put(Body=img_file)
+    object_url = "https://likes-bucket.s3.ap-southeast-1.amazonaws.com/{}".format(img_file.filename)
+    print("IMAGE SAVED", object_url)
+    # filename = secure_filename(img_file.filename)
+    # _img_path = os.path.join(current_app.config['UPLOAD_IMAGES_FOLDER'], filename)
+    # img_file.save(_img_path)
+    # print("IMAGE SAVED", subscriber_id)
     
-    img_file.save(_img_path)
-    print("IMAGE SAVED", subscriber_id)
-    delivery.image_path = "img/uploads/" + filename
+    delivery.image_path = object_url
     delivery.messenger_id = ObjectId(messenger_id)
     delivery.delivery_longitude = longitude
     delivery.delivery_latitude = latitude
@@ -136,7 +139,8 @@ def confirm_deliver():
         'result':True, 
         'delivery': {
             'id': str(delivery.id),
-            'status': delivery.status
+            'status': delivery.status,
+            'image_path': delivery.image_path,
             }
         })
 
@@ -216,6 +220,7 @@ def get_deliveries():
             'area_name': delivery.area.name,
             'sub_area_id': str(delivery.sub_area.id),
             'sub_area_name': delivery.sub_area.name,
+            'image_path': delivery.image_path
         })
     # WE SERIALIZE AND RETURN LIST INSTEAD OF MODELS 
     return jsonify({'deliveries': table_data})

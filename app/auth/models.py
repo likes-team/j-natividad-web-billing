@@ -136,18 +136,21 @@ class User(UserMixin, BaseModel, Admin):
         return self.fname + " " + self.lname
 
     @property
-    def role(self) -> Role:
+    def role(self):
         return self._role
 
     @classmethod
     def find_one_by_username(cls, username):
-        query = mongo.db.auth_users.aggregate([
+        query = list(mongo.db.auth_users.aggregate([
             {"$match": {"username": username}},
             {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
                          "foreignField": "_id", 'as': "role"}}
-        ])
+        ]))
+        
+        if len(query) == 0:
+            return None
 
-        return cls(data=list(query)[0])
+        return cls(data=query[0])
 
     @classmethod
     def find_one_by_id(cls, id, session=None):

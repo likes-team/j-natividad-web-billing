@@ -1,5 +1,6 @@
 from re import sub
 from bson.objectid import ObjectId
+from flask.templating import render_template
 from bds.views.billing import billings
 from flask import (json, url_for, request,jsonify, abort)
 from flask_login import login_required
@@ -7,7 +8,7 @@ from flask_cors import cross_origin
 from app.admin.templating import admin_render_template
 from bds import bp_bds
 from bds.models import Billing, Delivery, SubArea, Municipality, Subscriber, Area
-from app import mongo
+from app import S3, mongo, csrf
 
 
 
@@ -88,7 +89,7 @@ def get_delivery(subscriber_id):
         'latitude': delivery.delivery_latitude,
         'accuracy': accuracy,
         'date_mobile_delivery': delivery.date_mobile_delivery,
-        'image_path': url_for('bp_bds.static', filename=delivery.image_path),
+        'image_path': delivery.image_path,
         'messenger_fname': delivery.messenger.fname,
         'messenger_lname': delivery.messenger.lname
     })
@@ -348,3 +349,19 @@ def get_dtbl_billings():
     print(response)
 
     return jsonify(response)
+
+
+@bp_bds.route('/s3-upload', methods=['GET', 'POST'])
+@csrf.exempt
+@cross_origin()
+def s3_upload():
+    if request.method == "GET":
+        return render_template("bds/s3_upload.html")
+    
+    file = request.files['file']
+    bucket = S3.Bucket('likes-bucket')
+    bucket.Object(file.filename).put(Body=file)
+    object_url = "https://likes-bucket.s3.ap-southeast-1.amazonaws.com/{}".format(file.filename)
+    print(object_url)
+    
+    return "uploaded"

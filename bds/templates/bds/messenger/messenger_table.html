@@ -108,18 +108,6 @@
     var dtbl_table;
 
 $(document).ready(function(){
-
-    var js_fields_array = JS_FIELDS.split(",");
-
-    for (i=0; i < js_fields_array.length; i++){
-        js_fields_array[i] = js_fields_array[i].replace('[', '');
-        js_fields_array[i] = js_fields_array[i].replace(']', '');
-        js_fields_array[i] = js_fields_array[i].replace('"', '');
-        js_fields_array[i] = js_fields_array[i].replace('"', '');
-        js_fields_array[i] = js_fields_array[i].replace(/\s/g, '');
-    }
-
-
     $.ajaxSetup({
         beforeSend: function(xhr, settings) {
             if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
@@ -127,7 +115,6 @@ $(document).ready(function(){
             }
         }
     });
-
 
     dtbl_table = $('#index_table').DataTable({
         "dom": 'rtip',
@@ -156,7 +143,7 @@ $(document).ready(function(){
         var id = $(this).attr('id');
 
         if ($("#view_edit_button").length) {
-            const view_url = $(id).attr('value');
+            const view_url = $(`#param_${id}`).attr('value');
             document.getElementById("view_edit_button").setAttribute("href", view_url);
         }
 
