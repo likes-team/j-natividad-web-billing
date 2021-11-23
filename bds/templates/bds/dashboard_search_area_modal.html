@@ -20,6 +20,17 @@
 
                     </select>
                 </div>
+                <div class="position-relative form-group">
+                    <label for="select_billing" class="">Billing</label>
+                    <select name="select" id="select_billing" class="form-control">
+                        <option value="">Choose...</option>
+
+                        {% for billing in billings %}
+                            <option value="{{billing.id}}">{{ billing.full_billing_no }}</option>
+                        {% endfor %}
+
+                    </select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>

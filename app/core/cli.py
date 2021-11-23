@@ -4,6 +4,7 @@ from bson.objectid import ObjectId
 import click
 import csv
 from shutil import copyfile
+from bds.models import Delivery
 from config import basedir
 from app.core.models import CoreModel, CoreModule
 from app import MODULES, mongo
@@ -217,6 +218,103 @@ def _create_superuser():
         print(str(exc))
 
 
+
+@bp_core.cli.command('automate_images')
+def automate_images():
+    deliveries_query = list(mongo.db.bds_deliveries.aggregate([
+        {'$match': {
+            "billing_id": ObjectId("618626a1adc256448a284fc4"), 
+            "sub_area_id": ObjectId("618616b49790b927eb768469"), 
+            'active': 1, 
+            'status': {"$ne": 'IN-PROGRESS'},
+            },
+         },
+        {'$lookup': {
+            'from': "auth_users", 
+            "localField": "subscriber_id", 
+            "foreignField": "_id",
+            'as': 'subscriber'
+            }},
+        {'$lookup': {
+            'from': "bds_areas", 
+            "localField": "area_id", 
+            "foreignField": "_id",
+            'as': 'area'
+            }},
+        {'$lookup': {
+            'from': "bds_sub_areas", 
+            "localField": "sub_area_id", 
+            "foreignField": "_id",
+            'as': 'sub_area'
+            }}
+    ]))
+    
+    count = 1
+    for data in deliveries_query:
+        try:
+            delivery = Delivery(data=data)
+            
+            check_path = delivery.image_path[:12]
+            
+            if check_path != "img/uploads/":
+                continue
+            
+            new_path = "https://likes-bucket.s3.ap-southeast-1.amazonaws.com/uploads/" + delivery.image_path[12:]
+            
+            mongo.db.bds_deliveries.update_one({
+                "_id": delivery.id, 
+            },{"$set": {
+                'image_path': new_path
+            }});
+            
+            print(str(count) + " " + "Success  " + str(delivery.id));
+            count = count + 1
+        except Exception:
+            print(str(count) + " " + "Error")
+            continue
+    
+    
+    
+# @bp_core.cli.command('automate_images')
+# def automate_images():
+#     deliveries_query = list(mongo.db.bds_deliveries.aggregate([
+#         {'$match': {
+#             "billing_id": ObjectId("618626a1adc256448a284fc4"), 
+#             "area_id": ObjectId("618616b49790b927eb768468"),
+#             'active': 1, 
+#             'status': {"$ne": 'IN-PROGRESS'},
+#             },
+#          },
+#         {'$lookup': {
+#             'from': "auth_users", 
+#             "localField": "subscriber_id", 
+#             "foreignField": "_id",
+#             'as': 'subscriber'
+#             }},
+#         {'$lookup': {
+#             'from': "bds_areas", 
+#             "localField": "area_id", 
+#             "foreignField": "_id",
+#             'as': 'area'
+#             }},
+#         {'$lookup': {
+#             'from': "bds_sub_areas", 
+#             "localField": "sub_area_id", 
+#             "foreignField": "_id",
+#             'as': 'sub_area'
+#             }}
+#     ]))
+    
+#     count = 1
+#     for data in deliveries_query:
+#         try:
+#             delivery = Delivery(data=data)
+#             path = delivery.image_path[12:]
+#             print("\"" + path + "\",")
+#             count = count + 1
+#         except Exception:
+#             continue
+    
 # @bp_core.cli.command("add_registration_date_field")
 # def install():
 #     registrations = Registration.objects()

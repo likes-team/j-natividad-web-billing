@@ -14,13 +14,15 @@ from app import mongo
 @login_required
 def dashboard():
     areas = Area.find_all()
+    billings = Billing.find_all()
 
     return admin_render_template(
         Dashboard, 
         'bds/dashboard.html', 
         'bds', 
         title="Dashboard",
-        areas=areas
+        areas=areas,
+        billings=billings
     )
 
 

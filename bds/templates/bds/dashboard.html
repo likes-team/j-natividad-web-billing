@@ -107,12 +107,14 @@
         $("#btn_confirm").click(function(){
             var selectedAreaId = $("#select_area").find(":selected").val();
             var selectedAreaName = $("#select_area").find(":selected").text();
+            var selectedBillingId = $("#select_billing").find(":selected").val();
+            var selectedBillingName = $("#select_billing").find(":selected").text();
 
             $.getJSON(
-                `/bds/dashboard/areas/${selectedAreaId}/billings/6177a0070efaa254673cc9d8/data`, function(response){
+                `/bds/dashboard/areas/${selectedAreaId}/billings/${selectedBillingId}/data`, function(response){
                 console.log(response);
 
-                myChart.options.title.text = selectedAreaName;
+                myChart.options.title.text = selectedAreaName + " - " + selectedBillingName;
                 updateData(myChart, response.data.labels, response.data.datasets);
             })
         });
