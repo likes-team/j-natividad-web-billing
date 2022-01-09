@@ -116,7 +116,9 @@
 
                 myChart.options.title.text = selectedAreaName + " - " + selectedBillingName;
                 updateData(myChart, response.data.labels, response.data.datasets);
-            })
+            }).fail(function() {
+                swal("Error Occured!", "Please refresh the page then try again!", "error");
+            });
         });
     });
 </script>

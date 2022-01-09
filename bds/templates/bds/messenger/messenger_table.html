@@ -161,6 +161,8 @@ $(document).ready(function(){
                 $("#view_username").val(response.data.username);
                 $("#view_email").val(response.data.email);
             }
+        }).fail(function() {
+            swal("Error Occured!", "Please refresh the page then try again!", "error");
         });
     });
 

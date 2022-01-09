@@ -1,0 +1,442 @@
+{% extends "admin/adminty_base.html" %}
+
+{% block head %}
+<!-- Data Table Css -->
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='bower_components/datatables.net-bs4/css/dataTables.bootstrap4.min.css')}}">
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='pages/data-table/css/buttons.dataTables.min.css')}}">
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='bower_components/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css')}}">
+<!-- sweet alert framework -->
+<link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='bower_components/sweetalert/css/sweetalert.css')}}">
+<!-- animation nifty modal window effects css -->
+<link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='css/component.css')}}">
+<link href="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.css" type="text/css" rel="stylesheet" />
+<!-- Notification.css -->
+<link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='pages/notification/notification.css')}}">
+{% endblock head %}
+
+
+{% block scripts %}
+<!-- data-table js -->
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net/js/jquery.dataTables.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-buttons/js/dataTables.buttons.min.js')}}"></script>
+<script src="{{url_for('bp_admin.static', filename='pages/data-table/js/jszip.min.js')}}"></script>
+<script src="{{url_for('bp_admin.static', filename='pages/data-table/js/pdfmake.min.js')}}"></script>
+<script src="{{url_for('bp_admin.static', filename='pages/data-table/js/vfs_fonts.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-buttons/js/buttons.print.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-buttons/js/buttons.html5.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-bs4/js/dataTables.bootstrap4.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-responsive/js/dataTables.responsive.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js')}}"></script>
+<!-- sweet alert js -->
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='bower_components/sweetalert/js/sweetalert.min.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modal.js')}}"></script>
+<!-- sweet alert modal.js intialize js -->
+<!-- modalEffects js nifty modal window effects -->
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modalEffects.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/classie.js')}}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.1/chart.min.js" integrity="sha512-O2fWHvFel3xjQSi9FyzKXWLTvnom+lOYR/AUEThL/fbP4hv1Lo5LCFCGuTXBRyKC4K4DJldg5kxptkgXAzUpvA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- featherlight js -->
+<script src="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.js" type="text/javascript" charset="utf-8"></script>
+<!-- notification js -->
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/bootstrap-growl.min.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='pages/notification/notification.js')}}"></script>
+<script>
+    $(document).ready(function(){
+        $("#li_delivery").addClass("active");
+
+        var isScanMode = false;
+        var barcode="";
+
+        var dt_deliveries = $('#tbl_deliveries').DataTable({
+            "pageLength": 50,
+            "processing": true,
+            "ordering": false,
+            "responsive": true,
+            //"ajax": {
+            //    "url": "/bds/billings//sub-areas//deliveries",
+            //},
+            "drawCallback": function() {
+                $("#preloader_select").hide();
+                $("#btn_select").show();
+            },
+            "createdRow": function( row, data, dataIndex ) {
+                $(row).attr('id', data[0]);
+            },
+            "columnDefs": [
+                {
+                    "targets": 0,
+                    "visible": false,
+                },
+                {
+                    "targets": 1,
+                    "render": function (data, type, row) {
+                        if (data == "NOT YET DELIVERED") {
+                            return `<div class="badge badge-info">NOT YET DELIVERED</div>`;
+                        } else if (data == "IN-PROGRESS") {
+                            return `<div class="badge badge-danger">IN-PROGRESS</div>`;
+                        } else if (data == "DELIVERED") {
+                            return `<div class="badge badge-success">DELIVERED</div>`;
+                        } else if (data == "PENDING") {
+                            return `<div class="badge badge-warning">PENDING</div>`;
+                        }
+                    },
+                },
+                {
+                    "targets": 7,
+                    "width": "1%",
+                    "render": function (data, type, row) {
+                        var htmlBtnDetails = `
+                        <div class="tabledit-toolbar btn-toolbar" style="text-align: left;">
+                            <div class="btn-group btn-group-sm" style="float: none;">
+                                <button type="button" class="btn_details btn btn-primary waves-effect waves-light md-trigger" data-featherlight="${row[8]}" style="float: none;margin: 5px;">
+                                    <span class="icofont icofont-ui-image"></span>
+                                </button>
+                        </div>
+                        `;
+                        if (row[1] == "NOT YET DELIVERED") {
+                            return "";
+                        } else if (row[1] == "IN-PROGRESS") {
+                            return "";
+                        } else if (row[1] == "DELIVERED") {
+                            return htmlBtnDetails;
+                        } else if (row[1] == "PENDING") {
+                            return htmlBtnDetails;
+                        } else {
+                            return "";
+                        }
+                    }
+                }
+            ],
+        });
+        
+        $(document).keydown(function(e) {
+            if (isScanMode == true){
+                var code = (e.keyCode ? e.keyCode : e.which);
+
+                if(code==13) {
+                    const contractNo = barcode;
+                    const url = `/bds/subscribers/${contractNo}/deliveries`;
+                    const selectedBillingId = $("#select_billing").find(":selected").val();
+                    const postData = {'billing_id': selectedBillingId}
+    
+                    $.ajax({
+                        url: url,
+                        type: "POST",
+                        dataType: "json",
+                        data: JSON.stringify(postData),
+                        contentType: "application/json; charset=utf-8",
+                        success: function (response) {
+                            if(response.status == "error"){
+                                notify(
+                                    'top', 'center', 'fa fa-comments', 'error', 'animated fadeInDown', 'animated fadeOutDown', 'Error Occured, ', 'Please try again!'
+                                );
+                            } else if(response.status == "success"){
+                                var rowId = "#" + response.data[0];
+                                var subscriber = response.data[2] + "-" + response.data[3];
+                                var newData = response.data;
+                                dt_deliveries.row(rowId).data(newData);
+                                notify(
+                                    'top', 'center', 'fa fa-comments', 'success', 'animated fadeInDown', 'animated fadeOutDown', 'Scanned Successfully! ', subscriber, 
+                                );
+                            }
+                        }
+                    });
+                    barcode = "";
+                } else {
+                    barcode=barcode+String.fromCharCode(code);
+                }
+            }
+        });
+
+        $("#btn_mode").click(function(){
+            var selectedBillingId = $("#select_billing").find(":selected").val();
+            var selectedMunicipalityId = $("#select_municipality").find(":selected").val();
+            var selectedAreaId = $("#select_area").find(":selected").val();
+            var selectedSubreaId = $("#select_sub_area").find(":selected").val();
+
+            if(selectedBillingId == "" || selectedMunicipalityId == "" 
+                || selectedAreaId == "" || selectedSubreaId == ""){
+                swal({
+                    title: "Please choose all required fields, before proceed to scanning!",
+                    text: "Scan Failed",
+                    type: "info",
+                    closeOnConfirm: true,
+                });
+                return;
+            }
+            
+            isScanMode = isScanMode == false ? true : false;
+            if(isScanMode == false){
+                notify(
+                    'top', 'center', 'fa fa-comments', 'info', 'animated fadeInDown', 'animated fadeOutDown', 'View Mode-', 'Viewing...'
+                );
+                $(this).html("View Mode");
+            } else {
+                notify(
+                    'top', 'center', 'fa fa-comments', 'info', 'animated fadeInDown', 'animated fadeOutDown', 'Scan Mode-', 'Scanning..'
+                );
+                $(this).html("Scan Mode");
+            }
+        })
+
+        $("#select_municipality").change(function(){
+            var municipalityID = $(this).val();
+
+            $.getJSON(
+                `/bds/municipalities/${municipalityID}/areas`, function(response){
+                    $("#select_area").empty().append($('<option></option>').attr("value", "").text("Choose..."));
+                    $("#select_sub_area").empty().append($('<option></option>').attr("value", "").text("Choose..."));
+
+                    for(var i=0; i < response.data.length; i++){
+                        $("#select_area").append($("<option></option>").attr("value", response.data[i]._id).text(response.data[i].name));
+                    }
+            }).fail(function() {
+                swal("Error Occured!", "Please refresh the page then try again!", "error");
+            });
+        });
+
+        $("#select_area").change(function(){
+            var areaID = $(this).val();
+
+            $.getJSON(
+                `/bds/areas/${areaID}/sub-areas`, function(response){
+                    $("#select_sub_area").empty().append($('<option></option>').attr("value", "").text("Choose..."));
+
+                    for(var i=0; i < response.data.length; i++){
+                        $("#select_sub_area").append($("<option></option>").attr("value", response.data[i]._id).text(response.data[i].name));
+                    }
+            }).fail(function() {
+                swal("Error Occured!", "Please refresh the page then try again!", "error");
+            });
+        });
+
+        $("#btn_select").click(function(){
+            var selectedBillingId = $("#select_billing").find(":selected").val();
+            var selectedBillingName = $("#select_billing").find(":selected").text();
+            var selectedMunicipalityId = $("#select_municipality").find(":selected").val();
+            var selectedMunicipalityName = $("#select_municipality").find(":selected").text();
+            var selectedAreaId = $("#select_area").find(":selected").val();
+            var selectedAreaName = $("#select_area").find(":selected").text();
+            var selectedSubreaId = $("#select_sub_area").find(":selected").val();
+            var selectedSubAreaName = $("#select_sub_area").find(":selected").text();
+            
+            if(selectedBillingId == "" || selectedMunicipalityId == "" 
+                || selectedAreaId == "" || selectedSubreaId == ""){
+                swal({
+                    title: "Please choose all required fields!",
+                    text: "Reminder",
+                    type: "info",
+                    closeOnConfirm: true,
+                });
+                return;
+            }
+            $("#preloader_select").show();
+            $("#btn_select").hide();
+
+            $("#card_header").text(`${selectedBillingName} - ${selectedMunicipalityName} - ${selectedAreaName} - ${selectedSubAreaName}`);
+
+            dt_deliveries.ajax.url(`/bds/billings/${selectedBillingId}/sub-areas/${selectedSubreaId}/deliveries`).load();
+        });
+    });
+
+    function notify(from, align, icon, type, animIn, animOut, title, message){
+        $.growl({
+            icon: icon,
+            title: title,
+            message: message,
+            url: ''
+        },{
+            element: 'body',
+            type: type,
+            allow_dismiss: true,
+            placement: {
+                from: from,
+                align: align
+            },
+            offset: {
+                x: 30,
+                y: 30
+            },
+            spacing: 10,
+            z_index: 999999,
+            delay: 5000,
+            timer: 1000,
+            url_target: '_blank',
+            mouse_over: false,
+            animate: {
+                enter: animIn,
+                exit: animOut
+            },
+            icon_type: 'class',
+            template: '<div data-growl="container" class="alert" role="alert">' +
+            '<button type="button" class="close" data-growl="dismiss">' +
+            '<span aria-hidden="true">&times;</span>' +
+            '<span class="sr-only">Close</span>' +
+            '</button>' +
+            '<span data-growl="icon"></span>' +
+            '<span data-growl="title"></span>' +
+            '<span data-growl="message"></span>' +
+            '<a href="#" data-growl="url"></a>' +
+            '</div>'
+        });
+    };
+</script>
+{% endblock scripts %}
+
+
+{% block content %}
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- Main-body start -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- Page-header start -->
+                <div class="page-header">
+                    <div class="row align-items-end">
+                        <div class="col-lg-8">
+                            <div class="page-header-title">
+                                <div class="d-inline">
+                                    <h4>Deliveries</h4>
+                                    <span>Description here</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="page-header-breadcrumb">
+                                <ul class="breadcrumb-title">
+                                    <li class="breadcrumb-item">
+                                        <a href="{{url_for('bp_admin.dashboard')}}"> <i class="feather icon-home"></i> </a>
+                                    </li>
+                                    <li class="breadcrumb-item"><a href="#!">Delivery</a> </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Page-header end -->
+
+                <div class="page-body">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 id="card_header">Billing - Municipality - Area - Sub-Area</h5>
+                                    <span>Deliveries List</span>
+                                    <div class="card-header-right">
+                                        <ul class="list-unstyled card-option">
+                                            <button id="btn_mode" type="button" class="btn btn-primary waves-effect waves-light f-right d-inline-block">View Mode
+                                            </button>
+                                            <li>
+                                                <button id="btn_show_area_option" type="button" data-modal="modal-11" class="btn btn-info btn-icon waves-effect md-trigger"><i class="icofont icofont-options"></i></button>
+                                            </li>
+                                            <li><i class="feather icon-maximize full-card"></i></li>
+                                            <li><i class="feather icon-minus minimize-card"></i></li>
+                                         
+                                            <!-- <li><i class="feather icon-trash-2 close-card"></i></li> -->
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="card-block">
+                                    <div class="dt-responsive table-responsive">
+                                        <table id="tbl_deliveries" class="table table-striped table-bordered nowrap">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>STATUS</th>
+                                                    <th>CONTRACT NO.</th>
+                                                    <th>NAME</th>
+                                                    <th>ADDRESS</th>
+                                                    <th>DELIVERED BY</th>
+                                                    <th>DELIVERED AT</th>
+                                                    <th>ACTIONS</th>
+                                                </tr>
+                                            </thead>
+                                        </table>
+                                    </div>
+                                    <div class="animation-model">
+                                        <div class="md-modal md-effect-11" id="modal-11">
+                                            <div class="modal-dialog modal-sm">
+                                                <div class="md-content">
+                                                    <h3>Select</h3>
+                                                    <div>
+                                                        <div class="row">
+                                                            <div class="col-sm-12 col-xl-12 m-b-30">
+                                                                <h4 class="sub-title">Billing</h4>
+                                                                <select id="select_billing" class="form-control">
+                                                                    <option value="">Choose...</option>
+                                                                    {% for billing in billings %}
+                                                                        <option value="{{billing.id}}">{{billing.full_billing_no}}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="row">
+                                                            <div class="col-sm-12 col-xl-12 m-b-30">
+                                                                <h4 class="sub-title">Municipality</h4>
+                                                                <select id="select_municipality" class="form-control">
+                                                                    <option value="">Choose...</option>
+                                                                    {% for municipality in municipalities %}
+                                                                        <option value="{{municipality.id}}">{{municipality.name}}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-sm-12 col-xl-12 m-b-30">
+                                                                <h4 class="sub-title">Area</h4>
+                                                                <select id="select_area" class="form-control">
+                                                                    <option value="">Choose...</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-sm-12 col-xl-12 m-b-30">
+                                                                <h4 class="sub-title">SubArea</h4>
+                                                                <select id="select_sub_area" class="form-control">
+                                                                    <option value="">Choose...</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-default waves-effect md-close">Close</button>
+                                                            <button id="btn_select" type="button" class="btn btn-primary waves-effect waves-light">Select</button>
+                                                            <div id="preloader_select" style="height: 0px !important; display: none;" class="preloader3 loader-block">
+                                                                <div class="circ1 loader-primary loader-md"></div>
+                                                                <div class="circ2 loader-primary loader-md"></div>
+                                                                <div class="circ3 loader-primary loader-md"></div>
+                                                                <div class="circ4 loader-primary loader-md"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!--animation modal  Dialogs ends -->
+                                        <div class="md-overlay"></div>
+                                    </div>
+                                    <div id="mylightbox">This div will be opened in a lightbox</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="styleSelector">
+
+        </div>
+    </div>
+</div>
+{% endblock content %}

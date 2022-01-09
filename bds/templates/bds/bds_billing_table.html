@@ -201,6 +201,8 @@
                     $("#view_date_from").val(response.data.date_from);
                     $("#view_date_to").val(response.data.date_to);
                 }
+            }).fail(function() {
+                swal("Error Occured!", "Please refresh the page then try again!", "error");
             });
         });
     });

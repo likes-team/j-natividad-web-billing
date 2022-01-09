@@ -1,6 +1,7 @@
 from re import sub
 from bson.objectid import ObjectId
 from flask.templating import render_template
+from bds.globals import SUBSCRIBER_ROLE
 from bds.views.billing import billings
 from flask import (json, url_for, request,jsonify, abort)
 from flask_login import login_required
@@ -9,6 +10,7 @@ from app.admin.templating import admin_render_template
 from bds import bp_bds
 from bds.models import Billing, Delivery, SubArea, Municipality, Subscriber, Area
 from app import S3, mongo, csrf
+from bds.views.municipality import municipalities
 
 
 
@@ -21,9 +23,94 @@ modals = [
 @bp_bds.route('/deliveries',methods=['GET'])
 @login_required
 def deliveries():
+    billings = Billing.find_all()
+    municipalities = Municipality.find_all()
     
-    return admin_render_template(Delivery, 'bds/delivery/bds_delivery.html', 'bds', title="Delivery",\
-        modals=modals)
+    return render_template(
+        'bds/adminty_delivery.html', 
+        billings=billings,
+        municipalities=municipalities
+    )
+
+@bp_bds.route('/billings/<string:billing_id>/sub-areas/<string:sub_area_id>/deliveries')
+@cross_origin()
+def get_billing_sub_area_deliveries(billing_id, sub_area_id):
+    # try:
+    query = list(mongo.db.auth_users.find({
+        'role_id': SUBSCRIBER_ROLE.id,
+        'sub_area_id': ObjectId(sub_area_id)
+    }))
+
+    table_data = []
+
+    for data in query:
+        subscriber: Subscriber = Subscriber(data=data)
+        
+        delivery_query = list(mongo.db.bds_deliveries.aggregate([
+            {'$match': {
+                'billing_id': ObjectId(billing_id),
+                'subscriber_id': subscriber.id,
+                'active': 1
+            }},
+            {'$lookup': {
+                'from': "auth_users", 
+                "localField": "subscriber_id", 
+                "foreignField": "_id",
+                'as': 'subscriber'
+                }},
+            {'$lookup': {
+                'from': "bds_areas", 
+                "localField": "area_id", 
+                "foreignField": "_id",
+                'as': 'area'
+                }},
+            {'$lookup': {
+                'from': "bds_sub_areas", 
+                "localField": "sub_area_id", 
+                "foreignField": "_id",
+                'as': 'sub_area'
+                }},
+            {'$lookup': {
+                'from': "auth_users", 
+                "localField": "messenger_id", 
+                "foreignField": "_id",
+                'as': 'messenger'
+                }}
+        ]))
+        
+        if len(delivery_query) > 0:
+            delivery: Delivery = Delivery(data=delivery_query[0])
+        else:
+            delivery: Delivery = Delivery(data=None)
+        
+        status = ""
+        if delivery.status is not None and delivery.status != '':
+            status = delivery.status
+        else:
+            status = "NOT YET DELIVERED"
+        
+        table_data.append([
+            str(subscriber.id),
+            status,
+            subscriber.contract_no,
+            subscriber.fname + " " + subscriber.lname,
+            subscriber.address,
+            delivery.messenger.full_name if delivery.messenger is not None else '',
+            delivery.date_mobile_delivery if status != "NOT YET DELIVERED" else '',
+            "",
+            delivery.image_path
+        ])
+
+    response = {
+        'data': table_data
+    }
+
+    return jsonify(response), 200
+    # except Exception as err:
+    #     return jsonify({
+    #         'status': 'error',
+    #         'message': str(err)
+    #     }), 500
 
 
 @bp_bds.route('/subscribers/<string:subscriber_id>/delivery', methods=['GET'])
@@ -167,13 +254,11 @@ def deliver(subscriber_id):
 
 
 @bp_bds.route('/subscribers/<string:contract_no>/deliveries', methods=['POST'])
-@cross_origin()
+@csrf.exempt
 def deliver_subscriber_delivery(contract_no):
     try:
         billing_id = request.json['billing_id']
         subscribers = Subscriber.find_all_by_contract_no(contract_no=contract_no)
-
-        print(len(subscribers))
 
         if subscribers is None:
             raise Exception("Likes Error: No subscriber found")
@@ -207,102 +292,118 @@ def deliver_subscriber_delivery(contract_no):
             new_delivery.active = 1
             new_delivery.save()
             response['message'] = "Success"
-
+            response['data'] = [
+                str(subscriber.id),
+                new_delivery.status,
+                subscriber.contract_no,
+                subscriber.full_name,
+                subscriber.address,
+                '',
+                '',
+                "",
+                ''
+            ]
         return jsonify(response), 200
     except Exception as err:
         return jsonify({
             'status': 'error',
             'message': str(err)
-        }), 200
+        }), 500
 
 
-@bp_bds.route('/api/deliveries/reset-all', methods=['POST'])
-@cross_origin()
-def reset_all():
-    _sub_area_name = request.json['sub_area_name']
-    sub_area = SubArea.query.filter_by(name=_sub_area_name).first()
+# @bp_bds.route('/api/deliveries/reset-all', methods=['POST'])
+# @cross_origin()
+# def reset_all():
+#     _sub_area_name = request.json['sub_area_name']
+#     sub_area = SubArea.query.filter_by(name=_sub_area_name).first()
 
-    if sub_area is None:
-        abort(404)
+#     if sub_area is None:
+#         abort(404)
     
-    for subscriber in sub_area.subscribers:
-        delivery = Delivery.query.filter_by(subscriber_id=subscriber.id,active=1).first()
+#     for subscriber in sub_area.subscribers:
+#         delivery = Delivery.query.filter_by(subscriber_id=subscriber.id,active=1).first()
 
-        if delivery:
-            delivery.active = 0
-            db.session.commit()
+#         if delivery:
+#             delivery.active = 0
+#             db.session.commit()
     
-    return jsonify({'result':True})
+#     return jsonify({'result':True})
 
 
-@bp_bds.route('/api/deliveries/deliver-all', methods=['POST'])
-@cross_origin()
-def deliver_all():
-    billing_id = request.json['billing_id']
-    sub_area_name = request.json['sub_area_name']
-    sub_area = SubArea.query.filter_by(name=sub_area_name).first()
+# @bp_bds.route('/api/deliveries/deliver-all', methods=['POST'])
+# @cross_origin()
+# def deliver_all():
+#     billing_id = request.json['billing_id']
+#     sub_area_name = request.json['sub_area_name']
+#     sub_area = SubArea.query.filter_by(name=sub_area_name).first()
 
-    if not sub_area:
-        abort(404)
+#     if not sub_area:
+#         abort(404)
 
-    for subscriber in sub_area.subscribers:
-        delivery = Delivery.query.filter_by(
-            subscriber_id=subscriber.id, billing_id=billing_id, active=1
-            ).first()
+#     for subscriber in sub_area.subscribers:
+#         delivery = Delivery.query.filter_by(
+#             subscriber_id=subscriber.id, billing_id=billing_id, active=1
+#             ).first()
         
-        if not delivery:
-            new = Delivery(subscriber.id,"IN-PROGRESS")
-            new.billing_id = billing_id
+#         if not delivery:
+#             new = Delivery(subscriber.id,"IN-PROGRESS")
+#             new.billing_id = billing_id
 
-            db.session.add(new)
-            db.session.commit()
+#             db.session.add(new)
+#             db.session.commit()
 
-    response = jsonify({'result': True})
+#     response = jsonify({'result': True})
 
-    return response
-
-
-@bp_bds.route('/api/get-municipality-areas', methods=["GET"])
-@cross_origin()
-def get_municipality_areas():
-    municipality_name = request.args.get('municipality_name')
-    municipality = Municipality.find_one_by_name(name=municipality_name)
-
-    if municipality is None:
-        return jsonify({'result': False})
-
-    areas = Area.find_all_by_municipality_id(municipality.id)
-
-    data = []
-    for area in areas:
-        data.append({
-            'id': str(area.id),
-            'name': area.name,
-            'description': area.description
-        })
-    return jsonify({'result': data})
+#     return response
 
 
-@bp_bds.route('/api/get-area-sub-areas', methods=["GET"])
-@cross_origin()
-def get_area_sub_areas():
-    area_name = request.args.get('area_name')
-    area = Area.find_one_by_name(name=area_name)
+@bp_bds.route('/municipalities/<string:municipality_id>/areas', methods=['GET'])
+@login_required
+def get_municipality_areas(municipality_id):
+    try:
+        areas = Area.find_all_by_municipality_id(id=municipality_id)
+        
+        data = []
+        
+        area: Area
+        for area in areas:
+            data.append(area.toJson())
 
-    if area is None:
-        return jsonify(({'result': False}))
-    
-    data = []
+        response = {
+            'status': 'success',
+            'data': data,
+            'message': ""
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
-    sub_areas = SubArea.find_all_by_area_id(id=area.id)
-    sub_area: SubArea
-    for sub_area in sub_areas:
-        data.append({
-            'id': str(sub_area.id),
-            'name': sub_area.name,
-            'description': sub_area.description
-        })
-    return jsonify({'result': data})
+
+@bp_bds.route('/areas/<string:area_id>/sub-areas', methods=['GET'])
+@login_required
+def get_area_sub_areas(area_id):
+    try:
+        sub_areas = SubArea.find_all_by_area_id(id=area_id)
+        
+        data = []
+        
+        sub_area: SubArea
+        for sub_area in sub_areas:
+            data.append(sub_area.toJson())
+
+        response = {
+            'status': 'success',
+            'data': data,
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
 
 @bp_bds.route('/api/municipalities', methods=["GET"])

@@ -12,21 +12,30 @@ from app import csrf
 def api_login():
     username = request.json['username']
     password = request.json['password']
-    print(username,password)
 
-    user = User.find_one_by_username(username=username)
-    if user is None or not user.check_password(password):
-        abort(401)
+    try:
+        user = User.find_one_by_username(username=username)
 
-    response = jsonify({'userData':{
-        'id': str(user.id),
-        'fname': user.fname,
-        'lname': user.lname,
-        'email': user.email,
-        'is_admin': user.is_admin}})
-        
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
+        if user is None or not user.check_password(password):
+            response = {
+                'status': 'error',
+                'message': "Invalid username or password"
+            }
+            return jsonify(response), 401
+            
+        response = jsonify({
+            'status': 'success',
+            'data': user.toJson(),
+            'message': 'Login successfully!'
+            })
+            
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
 
 @bp_auth.route('/api/users', methods=['GET'])

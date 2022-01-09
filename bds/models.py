@@ -1,4 +1,6 @@
+from typing import Collection
 from bson.objectid import ObjectId
+import pymongo
 from app.admin.models import Admin
 from app.auth.models import User
 from app.core.models import BaseModel
@@ -12,7 +14,7 @@ class Billing(BaseModel, Admin):
     __amdescription__ = 'Billings'
     __amicon__ = 'pe-7s-cash'
     __view_url__ = 'bp_bds.billings'
-    __collection__ = mongo.db.bds_billings
+    __collection__: Collection = mongo.db.bds_billings
 
     billing_no: int
     full_billing_no: str
@@ -21,6 +23,46 @@ class Billing(BaseModel, Admin):
     # deliveries = db.relationship('Delivery', cascade='all,delete', backref="billing")
     date_from: datetime
     date_to: datetime
+
+    @classmethod
+    def find_all(cls):
+        try:
+            models = list(cls.__collection__.find().sort('created_at', pymongo.DESCENDING))
+            
+            data = []
+
+            for model in models:
+                data.append(cls(data=model))
+
+            return data
+        except AttributeError:
+            raise AttributeError("Collection is not implemented".format(model_name=cls().__class__.__name__))
+
+class Municipality(BaseModel, Admin):
+    __tablename__ = 'bds_municipalities'
+    __amname__ = 'municipality'
+    __amdescription__ = 'Municipalities'
+    __amicon__ = 'pe-7s-flag'
+    __parent_model__ = 'area'
+    __collection__ = mongo.db.bds_municipalities
+
+    name: str
+    description: str
+
+    def __init__(self, data=None):
+        super(Municipality, self).__init__(data=data)
+
+        if data is not None:
+            self.name = data.get('name', '')
+            self.description = data.get('description', '')
+
+    @classmethod
+    def find_one_by_name(cls, name):
+        try:
+            query = cls.__collection__.find_one({'name': name})
+            return cls(data=query)
+        except Exception:
+            raise Exception("No municipality found from the name({}) given".format(name))
 
 
 class Area(BaseModel, Admin):
@@ -36,10 +78,24 @@ class Area(BaseModel, Admin):
     __collection__ = mongo.db.bds_areas
 
     """ COLUMNS """
-    name: str = None
-    description: str = None
-    municipality_id: ObjectId = None
-    messengers: list = None
+    name: str
+    description: str
+    municipality_id: ObjectId
+    municipality: Municipality
+    messengers: list
+    
+    def __init__(self, data=None):
+        super(Area, self).__init__(data=data)
+        
+        if data is not None:
+            self.name = data.get('name', '')
+            self.description = data.get('description', '')
+            self.municipality_id = data.get('municipality_id', '')
+
+            if 'municipality' in data and len(data['municipality']) > 0:
+                self.municipality = Municipality(data=data['municipality'][0])
+            else:
+                self.municipality = None
 
     @classmethod
     def find_all_by_municipality_id(cls, id):
@@ -78,6 +134,20 @@ class SubArea(BaseModel, Admin):
     name: str
     description: str
     area_id: ObjectId
+    area: Area
+
+    def __init__(self, data=None):
+        super(SubArea, self).__init__(data=data)
+        
+        if data is not None:
+            self.name = data.get('name', '')
+            self.description = data.get('description', '')
+            self.area_id = data.get('area_id', '')
+
+            if 'area' in data and len(data['area']) > 0:
+                self.area = Area(data=data['area'][0])
+            else:
+                self.area = None
 
     @classmethod
     def find_all_by_area_id(cls, id):
@@ -93,33 +163,6 @@ class SubArea(BaseModel, Admin):
         for sub_area in sub_areas:
             data.append(cls(data=sub_area))
         return data
-
-
-class Municipality(BaseModel, Admin):
-    __tablename__ = 'bds_municipalities'
-    __amname__ = 'municipality'
-    __amdescription__ = 'Municipalities'
-    __amicon__ = 'pe-7s-flag'
-    __parent_model__ = 'area'
-    __collection__ = mongo.db.bds_municipalities
-
-    name: str
-    description: str
-
-    def __init__(self, data=None):
-        super(Municipality, self).__init__(data=data)
-
-        if data is not None:
-            self.name = data.get('name', '')
-            self.description = data.get('description', '')
-
-    @classmethod
-    def find_one_by_name(cls, name):
-        try:
-            query = cls.__collection__.find_one({'name': name})
-            return cls(data=query)
-        except Exception:
-            raise Exception("No municipality found from the name({}) given".format(name))
 
 
 class DeliveryMap(Admin):
@@ -260,7 +303,7 @@ class Delivery(BaseModel, Admin):
                 self._area = Area(data=data['area'][0])
             if 'sub_area' in data:
                 self._sub_area = SubArea(data=data['sub_area'][0])
-            if 'messenger' in data:
+            if 'messenger' in data and len(data['messenger']) > 0:
                 self._messenger = Messenger(data=data['messenger'][0])
 
     @property

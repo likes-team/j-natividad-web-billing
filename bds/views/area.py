@@ -1,5 +1,5 @@
 from bson.objectid import ObjectId
-from flask import redirect, url_for, request, flash, render_template
+from flask import redirect, url_for, request, flash, render_template, jsonify
 from flask_login import login_required
 from sqlalchemy.sql.expression import table
 from app.admin.templating import admin_render_template
@@ -10,6 +10,7 @@ from bds.globals import MESSENGER_ROLE
 from bds.models import Area, Messenger, Municipality
 from bds.forms import AreaEditForm, AreaForm
 from app import mongo
+from bds.views.municipality import municipalities
 
 
 modals = [
@@ -20,116 +21,133 @@ modals = [
 @bp_bds.route('/areas')
 @login_required
 def areas():
-    models = [Area, Municipality]
-    fields = ["id","name", "description", "munipacility", "created_at", "updated_at"]
-    form = AreaForm()
+    municipalities = Municipality.find_all()
+    return render_template("bds/adminty_areas.html", municipalities=municipalities)
 
+
+@bp_bds.route('/areas/<string:area_id>', methods=['GET'])
+@login_required
+def get_area(area_id):
+    try:
+        area = Area.find_one_by_id(id=area_id)
+
+        response = {
+            'status': 'success',
+            'data': {
+                'id': str(area.id),
+                'name': area.name,
+                'description': area.description,
+                'municipality_id': str(area.municipality_id)
+            },
+            'message': ""
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        print(err)
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
+
+
+@bp_bds.route('/areas/dt', methods=['GET'])
+def fetch_areas_dt():
+    draw = request.args.get('draw')
+    start, length = int(request.args.get('start')), int(request.args.get('length'))
+    search_value = request.args.get("search[value]")
     table_data = []
 
-    query = Area.find_all()
+    if search_value != '':
+        query = Area.search(
+            search={"name": {"$regex": search_value}},
+        )
+        total_records = len(query)
+    else:
+        query = list(mongo.db.bds_areas.aggregate([
+            {"$lookup": {"from": "bds_municipalities", "localField": "municipality_id",
+                         "foreignField": "_id", 'as': "municipality"}},
+            {"$skip": start},
+            {"$limit": length}
+        ]))
+        total_records = len(Area.find_all())
 
-    area: Area
-    for area in query:
+    filtered_records = len(query)
+
+    print("START: ", start)
+    print("DRAW: ", draw)
+    print("LENGTH: ", length)
+    print("filtered_records: ", filtered_records)
+    print("total_records: ", total_records)
+
+    for data in query:
+        area: Area = Area(data=data)
         table_data.append((
             str(area.id),
             area.name,
             area.description,
-            "",
+            area.municipality.name if area.municipality is not None else '',
             area.created_at_local,
-            area.updated_at_local
+            area.created_by,
+            ''
         ))
-
-    return admin_table(*models, fields=fields,form=form, create_url='bp_bds.create_area',\
-        create_button=True, edit_url="bp_bds.edit_area", create_modal=False, table_data=table_data)
+        
+    response = {
+        'draw': draw,
+        'recordsTotal': filtered_records,
+        'recordsFiltered': total_records,
+        'data': table_data
+    }
+    return jsonify(response)
 
 
 @bp_bds.route('/areas/create', methods=["GET","POST"])
 @login_required
 def create_area():
-    if request.method == "GET":
-        messengers = User.find_all_by_role_id(role_id=MESSENGER_ROLE.id)
-        # _municipalities = Municipality.query.all()
+    form = request.form
+ 
+    try:
+        new = Area()
+        new.name = form.get('name', '')
+        new.description = form.get('description', '')
+        new.municipality_id = ObjectId(form.get('municipality')) if form.get('municipality') != '' else None
+        new.save()
 
-        data = {
-            'messengers': messengers,
-            'municipalities': []
+        response = {
+            'status': 'success',
+            'data': new.toJson(),
+            'message': "New area added successfully!"
         }
-
-        return admin_render_template(Area, "bds/area/bds_create_area.html", 'bds', title="Create area",\
-            data=data, modals=modals)
-
-    # try:
-    new = Area()
-    new.name = request.form.get('name', '')
-    new.description = request.form.get('description', '')
-    new.municipality_id = request.form.get('municipality_id') if request.form.get('municipality_id') != '' else None
-
-    messengers_line = request.form.getlist('messengers[]')
-
-    with mongo.cx.start_session() as session:
-        with session.start_transaction():
-            if messengers_line:
-                for mes_id in messengers_line:
-                    mongo.db.auth_users.update_one({
-                        '_id': ObjectId(mes_id)
-                    },
-                    {"$push":{
-                        'areas': new.toJson()
-                    }
-                    }, session=session)
-            new.save(session=session)
-    flash('New Area added successfully!','success')
-    # except Exception as exc:
-    #     flash(str(exc), 'error')
-
-    return redirect(url_for('bp_bds.areas'))
+        return jsonify(response), 201
+    except Exception as err:
+        print(err)
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
 
 @bp_bds.route('/areas/<string:oid>/edit', methods=['GET','POST'])
 @login_required
 def edit_area(oid):
-    ins = Area.find_one_by_id(id=oid)
-    form = AreaEditForm(obj=ins)
-    if request.method == 'GET':
-        area_messengers_query = list(mongo.db.auth_users.find({
-            'areas._id': {'$in': [ins.id]}
-        }))
-        ins.messengers = [Messenger(data=data) for data in area_messengers_query]
-        
-        messengers_query = list(mongo.db.auth_users.find({
-            'role_id' : MESSENGER_ROLE.id,
-            'areas._id': {'$nin': [ins.id]}
-        }))
-        messengers = [Messenger(data=data) for data in messengers_query]
-        print("messengers: ", messengers)
-        
-        # query = db.session.query(User.id).join(messenger_areas).filter_by(area_id=oid)
-        # _messengers = db.session.query(User).filter(~User.id.in_(query)).filter_by(role_id=2).all()
-        municipalities = Municipality.find_all()
-
-        data = {
-            'messengers': messengers,
-            'municipalities': municipalities
-        }
-
-        return admin_render_template(Area, 'bds/area/bds_edit_area.html', 'bds', oid=oid, ins=ins,form=form,\
-            title="Edit area", data=data, modals=modals)
-        
-    try:
-        ins.name = request.form.get('name', '')
-        ins.description = request.form.get('description', '')
-        ins.municipality_id = ObjectId(request.form.get('municipality_id')) if request.form.get('municipality_id') != '' else None
-
-        mongo.db.bds_areas.update_one({
-            '_id': ins.id
-        },{"$set":{
-            'name': ins.name,
-            'description': ins.description,
-            'municipality_id': ins.municipality_id
-        }})
-
-        flash('Area updated Successfully!','success')
-    except Exception as e:
-        flash(str(e),'error')
+    form = request.form
     
-    return redirect(url_for('bp_bds.areas'))
+    try:
+        mongo.db.bds_areas.update_one({
+            "_id": ObjectId(oid)
+        }, {"$set": {
+            "name": form.get('name'),
+            'description': form.get('description'),
+            'municipality_id': ObjectId(form.get('municipality')) if form.get('municipality') != '' else None
+        }})
+        
+        response = {
+            'status': 'success',
+            'data': {},
+            'message': "Area updated Successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500

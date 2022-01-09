@@ -122,14 +122,14 @@
 
 
     function getBillingInfo(billing_id) {
-        const url = "/bds/api/billings/" + billing_id;
+        const url = "/bds/billings/" + billing_id;
 
         $.ajax({
             url: url,
             type: "GET",
             success: function (data) {
                 if (data) {
-                    $("#billing_no").val(data.number);
+                    $("#billing_no").val(data.billing_no);
                     $("#name").val(data.name);
                     $("#date_from").val(data.date_from);
                     $("#date_to").val(data.date_to);

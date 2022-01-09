@@ -1,6 +1,7 @@
 """ CORE MODELS """
 from datetime import datetime
 import enum
+from typing import Collection
 from flask_login import current_user
 from bson.objectid import ObjectId
 import pytz
@@ -15,6 +16,7 @@ class BaseModel(object):
     updated_at: datetime
     created_by: str
     updated_by: str
+    __collection__: Collection
 
     def __init__(self, data=None):
         self._id = ObjectId()
@@ -56,7 +58,11 @@ class BaseModel(object):
         pass
 
     def toJson(self):
-        return self.__dict__
+        json = self.__dict__
+        
+        for key,val in self.__dict__.items():
+            json[key] = str(val)
+        return json
 
     @classmethod
     def find_one_by_id(cls, id):
@@ -78,6 +84,34 @@ class BaseModel(object):
     def find_all(cls):
         try:
             models = list(cls.__collection__.find())
+            
+            data = []
+
+            for model in models:
+                data.append(cls(data=model))
+
+            return data
+        except AttributeError:
+            raise AttributeError("{model_name} Collection is not implemented".format(model_name=cls().__class__.__name__))
+
+    @classmethod
+    def find_with_range(cls, start, length):
+        try:
+            models = list(cls.__collection__.find().skip(start).limit(length))
+            
+            data = []
+
+            for model in models:
+                data.append(cls(data=model))
+
+            return data
+        except AttributeError:
+            raise AttributeError("{model_name} Collection is not implemented".format(model_name=cls().__class__.__name__))
+
+    @classmethod
+    def search(cls, search):
+        try:
+            models = list(cls.__collection__.find(search))
             
             data = []
 

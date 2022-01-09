@@ -1,0 +1,268 @@
+{% extends "admin/adminty_base.html" %}
+
+{% block head %}
+<!-- sweet alert framework -->
+<link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='bower_components/sweetalert/css/sweetalert.css')}}">
+<!-- animation nifty modal window effects css -->
+<link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='css/component.css')}}">
+{% endblock head %}
+
+
+{% block scripts %}
+<!-- sweet alert js -->
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='bower_components/sweetalert/js/sweetalert.min.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modal.js')}}"></script>
+<!-- sweet alert modal.js intialize js -->
+<!-- modalEffects js nifty modal window effects -->
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modalEffects.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/classie.js')}}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.1/chart.min.js" integrity="sha512-O2fWHvFel3xjQSi9FyzKXWLTvnom+lOYR/AUEThL/fbP4hv1Lo5LCFCGuTXBRyKC4K4DJldg5kxptkgXAzUpvA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    $(document).ready(function(){
+        $("#li_dashboard").addClass("active");
+        
+        const DATA_COUNT = 7;
+        const NUMBER_CFG = { count: DATA_COUNT, min: -100, max: 100 };
+            //{
+            //    label: 'Delivered',
+            //    data: [50, 20],
+            //    backgroundColor: CHART_COLORS.red,
+            //},
+            //{
+            //    label: 'Pending',
+            //    data: [15, 30],
+            //    backgroundColor: CHART_COLORS.blue,
+            //},
+            //{
+            //    label: 'In-Progress',
+            //    data: [20, 40],
+            //    backgroundColor: CHART_COLORS.green,
+            //},
+        const data = {
+            labels: [],
+            datasets: []
+        };
+
+        const config = {
+        type: 'bar',
+        data: data,
+        options: {
+            plugins: {
+            title: {
+                display: true,
+                text: 'Area Name'
+            },
+            },
+            responsive: true,
+            scales: {
+            x: {
+                stacked: true,
+            },
+            y: {
+                stacked: true
+            }
+            }
+            }
+        };
+
+        const ctx = document.getElementById('chart_area_summary');
+        const myChart = new Chart(ctx, config);
+
+        $("#btn_select").click(function(){
+            $("#preloader_select").show();
+            $("#btn_select").hide();
+
+            var selectedAreaId = $("#select_area").find(":selected").val();
+            var selectedAreaName = $("#select_area").find(":selected").text();
+            var selectedBillingId = $("#select_billing").find(":selected").val();
+            var selectedBillingName = $("#select_billing").find(":selected").text();
+
+            if(selectedAreaId == "" || selectedBillingId == ""){
+                $("#preloader_select").hide();
+                $("#btn_select").show();
+                return;
+            }
+
+            $.getJSON(
+                `/bds/dashboard/areas/${selectedAreaId}/billings/${selectedBillingId}/data`, function(response){
+                console.log(response);
+
+                myChart.options.plugins.title.text = selectedAreaName + " - " + selectedBillingName;
+                updateData(myChart, response.data.labels, response.data.datasets);
+
+                $("#preloader_select").hide();
+                $("#btn_select").show();
+            }).fail(function() {
+                swal("Error Occured!", "Please refresh the page then try again!", "error");
+            });
+        });
+    });
+
+    const MONTHS = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+    ];
+
+    const CHART_COLORS = {
+        red: 'rgb(255, 99, 132)',
+        orange: 'rgb(255, 159, 64)',
+        yellow: 'rgb(255, 205, 86)',
+        green: 'rgb(75, 192, 192)',
+        blue: 'rgb(54, 162, 235)',
+        purple: 'rgb(153, 102, 255)',
+        grey: 'rgb(201, 203, 207)'
+      };
+
+    function months(config) {
+        var cfg = config || {};
+        var count = cfg.count || 12;
+        var section = cfg.section;
+        var values = [];
+        var i, value;
+      
+        for (i = 0; i < count; ++i) {
+          value = MONTHS[Math.ceil(i) % 12];
+          values.push(value.substring(0, section));
+        }
+      
+        return values;
+      }
+
+      function updateData(chart, labels, datasets) {
+        removeData(chart);
+        chart.config.data.labels = labels;
+        chart.config.data.datasets = datasets;
+        chart.update();
+      };
+
+      function removeData(chart) {
+        chart.data.labels.pop();
+        chart.data.datasets.forEach((dataset) => {
+            dataset.data.pop();
+        });
+        chart.update();
+    }
+</script>
+{% endblock scripts %}
+
+
+{% block content %}
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- Main-body start -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- Page-header start -->
+                <div class="page-header">
+                    <div class="row align-items-end">
+                        <div class="col-lg-8">
+                            <div class="page-header-title">
+                                <div class="d-inline">
+                                    <h4>Delivery Management Dashboard</h4>
+                                    <span>Description here</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="page-header-breadcrumb">
+                                <ul class="breadcrumb-title">
+                                    <li class="breadcrumb-item">
+                                        <a href="{{url_for('bp_admin.dashboard')}}"> <i class="feather icon-home"></i> </a>
+                                    </li>
+                                    <li class="breadcrumb-item"><a href="#!">Dashboard</a> </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Page-header end -->
+
+                <div class="page-body">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Area Summary</h5>
+                                    <span>Description here</span>
+                                    <div class="card-header-right">
+                                        <ul class="list-unstyled card-option">
+                                            <li>
+                                                <button id="btn_show_area_option" type="button" data-modal="modal-11" class="btn btn-info btn-icon waves-effect md-trigger"><i class="icofont icofont-options"></i></button>
+                                            </li>
+                                            <li><i class="feather icon-maximize full-card"></i></li>
+                                            <li><i class="feather icon-minus minimize-card"></i></li>
+                                            <!-- <li><i class="feather icon-trash-2 close-card"></i></li> -->
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="card-block">
+                                    <div class="animation-model">
+                                        <div class="md-modal md-effect-11" id="modal-11">
+                                            <div class="modal-dialog modal-sm">
+                                                <div class="md-content">
+                                                    <h3>Area to Summarize</h3>
+                                                    <div>
+                                                        <div class="row">
+                                                            <div class="col-sm-12 col-xl-12 m-b-30">
+                                                                <h4 class="sub-title">Area</h4>
+                                                                <select id="select_area" class="form-control">
+                                                                    <option value="">Choose...</option>
+                                                                    {% for area in options['areas'] %}
+                                                                        <option value="{{area.id}}">{{ area.name }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-sm-12 col-xl-12 m-b-30">
+                                                                <h4 class="sub-title">Billing</h4>
+                                                                <select id="select_billing" class="form-control">
+                                                                    <option value="">Choose...</option>
+                                                                    {% for billing in options['billings'] %}
+                                                                        <option value="{{billing.id}}">{{ billing.full_billing_no }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-default waves-effect md-close">Close</button>
+                                                            <button id="btn_select" type="button" class="btn btn-primary waves-effect waves-light">Select</button>
+                                                            <div id="preloader_select" style="height: 0px !important; display: none;" class="preloader3 loader-block">
+                                                                <div class="circ1 loader-primary loader-md"></div>
+                                                                <div class="circ2 loader-primary loader-md"></div>
+                                                                <div class="circ3 loader-primary loader-md"></div>
+                                                                <div class="circ4 loader-primary loader-md"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!--animation modal  Dialogs ends -->
+                                        <div class="md-overlay"></div>
+                                    </div>
+                                    <canvas id="chart_area_summary" height="350" class="chartjs-render-monitor"
+                                    style="display: block; width: 341px; height: 170px;" width="895"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="styleSelector">
+
+        </div>
+    </div>
+</div>
+{% endblock content %}

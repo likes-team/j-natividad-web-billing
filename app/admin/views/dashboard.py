@@ -12,6 +12,8 @@ from app.admin.templating import admin_dashboard, DashboardBox
 @bp_admin.route('/') # move to views
 @login_required
 def dashboard():
+    from bds.models import Area, Billing
+
     if current_user.role.name != "Admin":
         return render_template('auth/authorization_error.html')
 
@@ -20,11 +22,16 @@ def dashboard():
     if AdminDashboard.__view_url__ == 'bp_admin.no_view_url':
         return redirect(url_for('bp_admin.no_view_url'))
     
+    areas = Area.find_all()
+    billings = Billing.find_all()
+    
     options = {
         'box1': DashboardBox("Total Modules","Installed", CoreModule.count()),
         'box2': DashboardBox("System Models","Total models", CoreModel.count()),
         'box3': DashboardBox("Users","Total users", User.count()),
-        'scripts': [{'bp_admin.static': 'js/dashboard.js'}]
+        'scripts': [{'bp_admin.static': 'js/dashboard.js'}],
+        'areas': areas,
+        'billings': billings
     }
 
     return admin_dashboard(AdminDashboard, **options)

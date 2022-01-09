@@ -36,7 +36,7 @@ def admin_render_template(rendered_model, template_name_or_list, module_name, sc
 
 def admin_dashboard(model, **kwargs):
     options = {
-        'dashboard_template': "admin/admin_dashboard.html",
+        'dashboard_template': "admin/adminty_dashboard.html",
         'box1': None,'box2': None,'box3': None,'box4': None,
         'data': None,
         'title': 'Admin Dashboard',

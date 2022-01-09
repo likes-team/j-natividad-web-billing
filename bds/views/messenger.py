@@ -2,6 +2,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash
 from flask.json import jsonify
+from flask.templating import render_template
 from flask_login import current_user, login_required
 from app import mongo
 from app.admin.templating import admin_render_template, admin_table, admin_edit
@@ -12,8 +13,6 @@ from bds.models import Area, Messenger
 from bds.forms import MessengerForm, MessengerEditForm
 
 
-
-
 modals = [
     "bds/messenger/bds_add_area_modal.html"
 ]
@@ -22,28 +21,64 @@ modals = [
 @bp_bds.route('/messengers',methods=['GET'])
 @login_required
 def messengers():
-    form = MessengerForm()
-    # fields = [User.id, User.username, User.fname, User.lname, User.email, User.created_at, User.updated_at]
-    fields = ['id', 'username', 'first name', 'last name', ' email', 'created_at', 'updated_at']
+    return render_template("bds/adminty_messengers.html")
+
+    # return admin_table(User, fields=fields, form=form, create_url='bp_bds.create_messenger', \
+    #     edit_url="bp_bds.edit_messenger", module_name='bds', table_data=table_data, \
+    #         create_button=True, create_modal=False, table_template="bds/messenger/messenger_table.html")
+
+
+@bp_bds.route('/messengers/dt', methods=['GET'])
+def fetch_messengers_dt():
+    draw = request.args.get('draw')
+    start, length = int(request.args.get('start')), int(request.args.get('length'))
+    search_value = request.args.get("search[value]")
     table_data = []
 
-    query = Messenger.find_all_by_role_id(role_id=MESSENGER_ROLE.id)
+    if search_value != '':
+        query = User.search(
+            search={"name": {"$regex": search_value}},
+        )
+        total_records = len(query)
+    else:
+        query = list(mongo.db.auth_users.aggregate([
+            {"$match": {"role_id": MESSENGER_ROLE.id}},
+            {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
+                         "foreignField": "_id", 'as': "role"}},
+            {"$skip": start},
+            {"$limit": length}
+        ]))
+        total_records = len(Messenger.find_all_by_role_id(MESSENGER_ROLE.id))
 
-    messenger: User
-    for messenger in query:
+    print(query)
+
+    filtered_records = len(query)
+
+    print("START: ", start)
+    print("DRAW: ", draw)
+    print("LENGTH: ", length)
+    print("filtered_records: ", filtered_records)
+    print("total_records: ", total_records)
+
+    for data in query:
+        messenger: User = User(data=data)
+        
         table_data.append((
             str(messenger.id),
             messenger.username,
             messenger.fname,
             messenger.lname,
             messenger.email,
-            messenger.created_at_local,
-            messenger.updated_at_local
+            ''
         ))
-
-    return admin_table(User, fields=fields, form=form, create_url='bp_bds.create_messenger', \
-        edit_url="bp_bds.edit_messenger", module_name='bds', table_data=table_data, \
-            create_button=True, create_modal=False, table_template="bds/messenger/messenger_table.html")
+        
+    response = {
+        'draw': draw,
+        'recordsTotal': filtered_records,
+        'recordsFiltered': total_records,
+        'data': table_data
+    }
+    return jsonify(response)
 
 
 @bp_bds.route('/messengers/<string:messenger_id>')

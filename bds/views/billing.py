@@ -1,6 +1,7 @@
 from datetime import datetime
 from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash, jsonify
+from flask.templating import render_template
 from flask_login import  login_required, current_user
 from flask_pymongo import DESCENDING
 import pymongo
@@ -33,12 +34,70 @@ def billings():
 
     form.number.auto_generated = _billing_generated_number
     
-    table_data = []
+    return render_template("bds/adminty_billing.html", billing_generated_number=_billing_generated_number)
+    
+    # return admin_table(Billing, fields=fields, form=form, create_url='bp_bds.create_billing',\
+    #     edit_url="bp_bds.edit_billing", table_template="bds/adminty_billing.html",\
+    #         view_modal_template="bds/bds_billing_view_modal.html", billing_generated_number=_billing_generated_number,
+    #         table_data=[])
 
-    query_billings = Billing.find_all()
+
+@bp_bds.route('/billings/new-generated-number', methods=['GET'])
+def get_new_generated_number():
+    try:
+        generated_number = ""
+        query_last_billing = list(mongo.db.bds_billings.find().sort('created_at', pymongo.DESCENDING).limit(1))
+
+        if query_last_billing:
+            generated_number = generate_number("BILL", query_last_billing[0]['billing_no'])
+        else:
+            generated_number = "BILL00000001"
+
+        response = {
+            'status': 'success',
+            'data': {
+                'new_generated_number': generated_number
+            },
+            'message': ""
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 200
+
+
+@bp_bds.route('/billings/dt', methods=['GET'])
+def fetch_billings_dt():
+    draw = request.args.get('draw')
+    start, length = int(request.args.get('start')), int(request.args.get('length'))
+    search_value = request.args.get("search[value]")
+    table_data = []
+    print("search_value", search_value)
+
+    if search_value != '':
+        query = Billing.search(
+            search={"name": {"$regex": search_value}},
+        )
+        total_records = len(query)
+    else:
+        query = Billing.find_with_range(
+            start=start,
+            length=length
+        )        
+        total_records = len(Billing.find_all())
+
+    filtered_records = len(query)
+
+    print("START: ", start)
+    print("DRAW: ", draw)
+    print("LENGTH: ", length)
+    print("filtered_records: ", filtered_records)
+    print("total_records: ", total_records)
 
     billing: Billing
-    for billing in query_billings:
+    for billing in query:
         table_data.append((
             str(billing.id),
             billing.active,
@@ -49,17 +108,21 @@ def billings():
             billing.date_to,
             billing.created_by,
             billing.created_at_local,
+            ''
         ))
-
-    return admin_table(Billing, fields=fields, form=form, create_url='bp_bds.create_billing',\
-        edit_url="bp_bds.edit_billing", table_template="bds/bds_billing_table.html",\
-            view_modal_template="bds/bds_billing_view_modal.html",
-            table_data=table_data)
+        
+    response = {
+        'draw': draw,
+        'recordsTotal': filtered_records,
+        'recordsFiltered': total_records,
+        'data': table_data
+    }
+    return jsonify(response)
 
 
 @bp_bds.route('/billings/<string:billing_id>', methods=['GET'])
 @login_required
-def get_billing_details(billing_id):
+def get_billing(billing_id):
     try:
         billing = Billing.find_one_by_id(id=billing_id)
 
@@ -86,89 +149,80 @@ def get_billing_details(billing_id):
 @bp_bds.route('/billings/create',methods=['POST'])
 @login_required
 def create_billing():
-    form = BillingForm()
-    
-    if not form.validate_on_submit():
-        for key, value in form.errors.items():
-            flash(str(key) + str(value), 'error')
-        return redirect(url_for('bp_bds.billings'))
+    form = request.form
     
     try:
         new = Billing()
         new.active = False
-        new.full_billing_no = form.number.data
-        new.name = form.name.data
-        new.description = form.description.data
-        new.date_to = form.date_to.data
-        new.date_from = form.date_from.data
+        new.full_billing_no = form.get('number')
+        new.name = form.get('name')
+        new.description = form.get('description')
+        new.date_to = form.get('date_to')
+        new.date_from = form.get('date_from')
         new.billing_no = new.count() + 1
         new.save()
+        response = {
+            'status': 'success',
+            'data': new.toJson(),
+            'message': "New billing added successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
-        flash('New billing added successfully!','success')
 
-    except Exception as e:
-        flash(str(e), 'error')
-
-    return redirect(url_for('bp_bds.billings'))
-
-
-@bp_bds.route('/billings/<string:oid>/edit',methods=['GET','POST'])
+@bp_bds.route('/billings/<string:oid>/edit',methods=['POST'])
 @login_required
 def edit_billing(oid):
-    ins = Billing.query.get_or_404(oid)
-    form = BillingEditForm(obj=ins)
-
-    if request.method == "GET":
-        return admin_edit(Billing, form, 'bp_bds.edit_billing', oid, 'bp_bds.subscribers')
-
-    if not form.validate_on_submit():
-        for key, value in form.errors.items():
-            flash(str(key) + str(value), 'error')
-        return redirect(url_for('bp_bds.billings'))
-
+    form = request.form
+    print(oid)
     try:
-        ins.name = form.name.data
-        ins.description = form.description.data
-        ins.date_to = form.date_to.data
-        ins.date_from = form.date_from.data
-        ins.updated_at = datetime.now()
-        ins.updated_by = "{} {}".format(current_user.fname,current_user.lname)
-
-        db.session.commit()
-        flash('Billing update Successfully!','success')
-
-    except Exception as e:
-        flash(str(e),'error')
-
-    return redirect(url_for('bp_bds.billings'))
+        mongo.db.bds_billings.update_one({
+            "_id": ObjectId(oid)
+        }, {"$set": {
+            "name": form.get('name'),
+            'description': form.get('description'),
+            'date_from': form.get('date_from'),
+            'date_to': form.get('date_to')
+        }})
+        
+        response = {
+            'status': 'success',
+            'data': {},
+            'message': "Billing updated Successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
 
 @bp_bds.route('/billings/<string:billing_id>/set-active', methods=['POST'])
 @login_required
 def set_active(billing_id):
     status = request.json['status']
+    try:
+        with mongo.cx.start_session() as session:
+            with session.start_transaction():
+                mongo.db.bds_billings.update_many({
+                    'active': True
+                }, {"$set":{
+                    'active': False
+                }}, session=session)
 
-    # try:
-
-    with mongo.cx.start_session() as session:
-        with session.start_transaction():
-            mongo.db.bds_billings.update_many({
-                'active': 1
-            }, {"$set":{
-                'active': 0
-            }}, session=session)
-
-            mongo.db.bds_billings.update_one({
-                '_id': ObjectId(billing_id)
-            },{"$set":{
-                'active': status
-            }}, session=session)
-
-    # except Exception:
-    #     return jsonify({'result': False})
-    response = jsonify({
-        'result': True
-    })
-
-    return response
-    
+                mongo.db.bds_billings.update_one({
+                    '_id': ObjectId(billing_id)
+                },{"$set":{
+                    'active': status
+                }}, session=session)
+        response = jsonify({
+            'result': True
+        })
+        return response
+    except Exception:
+        return jsonify({'result': False})

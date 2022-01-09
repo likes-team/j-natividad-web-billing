@@ -1,0 +1,75 @@
+<nav class="pcoded-navbar">
+    <div class="pcoded-inner-navbar main-menu">
+        <div class="pcoded-navigatio-lavel">Delivery Management</div>
+        <ul class="pcoded-item pcoded-left-item">
+            <li id="li_dashboard" class="">
+                <a href="{{url_for('bp_admin.dashboard')}}">
+                    <span class="pcoded-micon"><i class="feather icon-trending-up"></i></span>
+                    <span class="pcoded-mtext">Dashboard</span>
+                </a>
+            </li>
+            <li id="li_billing" class="">
+                <a href="{{url_for('bp_bds.billings')}}">
+                    <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
+                    <span class="pcoded-mtext">Billing</span>
+                </a>
+            </li>
+            <li id="li_delivery" class="">
+                <a href="{{url_for('bp_bds.deliveries')}}">
+                    <span class="pcoded-micon"><i class="feather icon-map"></i></span>
+                    <span class="pcoded-mtext">Delivery</span>
+                </a>
+            </li>
+            <li id="li_location" class="pcoded-hasmenu">
+                <a href="javascript:void(0)">
+                    <span class="pcoded-micon"><i class="feather icon-map-pin"></i></span>
+                    <span class="pcoded-mtext">Location</span>
+                </a>
+                <ul class="pcoded-submenu">
+                    <li id="li_sub_area" class="">
+                        <a href="{{url_for('bp_bds.sub_areas')}}">
+                            <span class="pcoded-mtext">Sub Areas</span>
+                        </a>
+                    </li>
+                    <li id="li_area" class="">
+                        <a href="{{url_for('bp_bds.areas')}}">
+                            <span class="pcoded-mtext">Areas</span>
+                        </a>
+                    </li>
+                    <li id="li_municipality" class="">
+                        <a href="{{url_for('bp_bds.municipalities')}}">
+                            <span class="pcoded-mtext">Municipalities</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li id="li_subscriber" class="">
+                <a href="{{url_for('bp_admin.dashboard')}}">
+                    <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+                    <span class="pcoded-mtext">Subscribers</span>
+                </a>
+            </li>
+            <li id="li_messenger" class="">
+                <a href="{{url_for('bp_bds.messengers')}}">
+                    <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+                    <span class="pcoded-mtext">Messengers</span>
+                </a>
+            </li>
+        </ul>
+        <div class="pcoded-navigatio-lavel">System Management</div>
+        <ul class="pcoded-item pcoded-left-item">
+            <li id="li_dashboard" class="">
+                <a href="{{url_for('bp_auth.users')}}">
+                    <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+                    <span class="pcoded-mtext">Users</span>
+                </a>
+            </li>
+            <li id="li_billing" class="">
+                <a href="{{url_for('bp_auth.roles')}}">
+                    <span class="pcoded-micon"><i class="feather icon-user-check"></i></span>
+                    <span class="pcoded-mtext">Roles</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
