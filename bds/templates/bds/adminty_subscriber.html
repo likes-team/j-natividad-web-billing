@@ -1,0 +1,544 @@
+{% extends 'admin/adminty_base.html' %}
+
+
+{% block head %}
+<!-- Data Table Css -->
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='bower_components/datatables.net-bs4/css/dataTables.bootstrap4.min.css')}}">
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='pages/data-table/css/buttons.dataTables.min.css')}}">
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='bower_components/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css')}}">
+<!-- sweet alert framework -->
+<link rel="stylesheet" type="text/css"
+    href="{{url_for('bp_admin.static', filename='bower_components/sweetalert/css/sweetalert.css')}}">
+<!-- animation nifty modal window effects css -->
+<link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='css/component.css')}}">
+<!-- featherlight css -->
+<link href="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.css" type="text/css" rel="stylesheet" />
+{% endblock head %}
+
+
+{% block scripts %}
+<!-- data-table js -->
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net/js/jquery.dataTables.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-buttons/js/dataTables.buttons.min.js')}}"></script>
+<script src="{{url_for('bp_admin.static', filename='pages/data-table/js/jszip.min.js')}}"></script>
+<script src="{{url_for('bp_admin.static', filename='pages/data-table/js/pdfmake.min.js')}}"></script>
+<script src="{{url_for('bp_admin.static', filename='pages/data-table/js/vfs_fonts.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-buttons/js/buttons.print.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-buttons/js/buttons.html5.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-bs4/js/dataTables.bootstrap4.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-responsive/js/dataTables.responsive.min.js')}}"></script>
+<script
+    src="{{url_for('bp_admin.static', filename='bower_components/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js')}}"></script>
+<!-- sweet alert js -->
+<script type="text/javascript"
+    src="{{url_for('bp_admin.static', filename='bower_components/sweetalert/js/sweetalert.min.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modal.js')}}"></script>
+<!-- sweet alert modal.js intialize js -->
+<!-- modalEffects js nifty modal window effects -->
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modalEffects.js')}}"></script>
+<script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/classie.js')}}"></script>
+<!-- featherlight js -->
+<script src="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", CSRF_TOKEN);
+            }
+        }
+    });        
+
+    $.validator.setDefaults({
+        errorElement: 'span',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            element.closest('.form-group').append(error);
+        },
+        highlight: function (element, errorClass, validClass) {
+            $(element).addClass('is-invalid');
+        },
+        unhighlight: function (element, errorClass, validClass) {
+            $(element).removeClass('is-invalid');
+        }
+    });
+
+    function clearCreateModal(){
+        $(':input','#mdl_create_sub_area')
+            .not(':button, :submit, :reset, :hidden')
+            .val('')
+            .prop('checked', false)
+            .prop('selected', false);
+    }
+
+    $(document).ready(function () {
+        $("#li_subscriber").addClass('active');
+
+        var selectedSubscriberID;
+
+        var dt_subscribers = $('#tbl_subscribers').DataTable({
+            "pageLength": 25,
+            "processing": true,
+            "serverSide": true,
+            "ordering": false,
+            "responsive": true,
+            "autoWidth": false,
+            "ajax": {
+                "url": "/bds/subscribers/dt",
+            },
+            "columnDefs": [{
+                "targets": 0,
+                "visible": false,
+            }, {
+                "targets": 6,
+                "width": "1%",
+                "render": function (data, type, row) {
+                    return `
+                    <div class="tabledit-toolbar btn-toolbar" style="text-align: left;">
+                        <div class="btn-group btn-group-sm" style="float: none;">
+                            <button type="button" class="btn-view-billing-history btn btn-primary waves-effect waves-light md-trigger" data-modal="mdl_view_billing_history" style="float: none;margin: 5px;">
+                                <span class="icofont icofont-list"></span>
+                            </button>
+                        </div>
+                    </div>
+                    `
+                }
+            }],
+            "language": {
+                "searchPlaceholder": "By last name",
+            },
+            initComplete : function() {
+                var input = $('.dataTables_filter input').unbind(),
+                    self = this.api(),
+                    $searchButton = $('<button>')
+                               .text('search')
+                               .click(function() {
+                                  self.search(input.val()).draw();
+                               }),
+                    $clearButton = $('<button>')
+                               .text('clear')
+                               .click(function() {
+                                  input.val('');
+                                  $searchButton.click(); 
+                               }) 
+                $('.dataTables_filter').append($searchButton, $clearButton);
+            }  
+        });
+
+        dt_subscribers.on( 'search.dt', function () {
+            dt_subscribers.search();
+        } );
+
+        var dt_billing_history = $('#tbl_billing_history').DataTable({
+            "dom": 'lrt',
+            "pageLength": 50,
+            "processing": true,
+            "ordering": false,
+            "responsive": true,
+            "autoWidth": false,
+            //"ajax": {
+            //    "url": "/bds/billings//sub-areas//deliveries",
+            //},
+            "createdRow": function( row, data, dataIndex ) {
+                $(row).attr('id', data[0]);
+            },
+            "columnDefs": [
+                {
+                    "targets": 0,
+                    "visible": false,
+                },
+                {
+                    "targets": 1,
+                    "render": function (data, type, row) {
+                        if (data == "NOT YET DELIVERED") {
+                            return `<div class="badge badge-info">NOT YET DELIVERED</div>`;
+                        } else if (data == "IN-PROGRESS") {
+                            return `<div class="badge badge-danger">IN-PROGRESS</div>`;
+                        } else if (data == "DELIVERED") {
+                            return `<div class="badge badge-success">DELIVERED</div>`;
+                        } else if (data == "PENDING") {
+                            return `<div class="badge badge-warning">PENDING</div>`;
+                        }
+                    },
+                },
+                {
+                    "targets": 7,
+                    "width": "1%",
+                    "render": function (data, type, row) {
+                        var htmlBtnDetails = `
+                        <div class="tabledit-toolbar btn-toolbar" style="text-align: left;">
+                            <div class="btn-group btn-group-sm" style="float: none;">
+                                <button type="button" class="btn_details btn btn-primary waves-effect waves-light md-trigger" data-featherlight="${row[8]}" style="float: none;margin: 5px;">
+                                    <span class="icofont icofont-ui-image"></span>
+                                </button>
+                        </div>
+                        `;
+                        if (row[1] == "NOT YET DELIVERED") {
+                            return "";
+                        } else if (row[1] == "IN-PROGRESS") {
+                            return "";
+                        } else if (row[1] == "DELIVERED") {
+                            return htmlBtnDetails;
+                        } else if (row[1] == "PENDING") {
+                            return htmlBtnDetails;
+                        } else {
+                            return "";
+                        }
+                    }
+                }
+            ],
+        });
+
+        $('#frm_create_subscriber').validate({
+            'rules': {
+                'fname': {
+                    'required': true
+                },
+                'lname': {
+                    'required': true,
+                },
+                'contract_no': {
+                    'required': true,
+                },
+                'address': {
+                    'required': true,
+                },
+                'sub_area': {
+                    'required': true,
+                },
+            },
+            'submitHandler': function(form){
+                var xform = $(form);
+
+                swal({
+                    title: `Create this new Subscriber?`,
+                    text: "Double check your inputted data!",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonClass: "btn-danger",
+                    confirmButtonText: "Confirm!",
+                    closeOnConfirm: false,
+                    showLoaderOnConfirm: true
+                }, function(){
+                    setTimeout(function () {
+                        $.ajax({
+                            type: xform.attr('method'),
+                            url: xform.attr('action'),
+                            data: xform.serialize(),
+                            success: function (response) {
+                                dt_subscribers.ajax.reload();
+
+                                swal("Success!", response.message, "success");
+
+                                event.stopPropagation();
+                                $("#mdl_create_sub_area").removeClass('md-show');
+                                clearCreateModal();
+                            },
+                            error: function (data) {
+                                swal("Error Occured!", "Please refresh the page then try again!", "error");
+                            },
+                        });
+                    }, 500);
+                });
+            }
+        });
+
+
+        $("#tbl_subscribers tbody").on('click', '.btn-view-billing-history', function () {
+            var overlay = document.querySelector('.md-overlay');
+            const modal = $("#mdl_view_billing_history");
+            modal.addClass('md-show');
+            function removeModalHandler() {
+                modal.removeClass('md-show');
+            }
+            overlay.removeEventListener('click', removeModalHandler);
+            overlay.addEventListener('click', removeModalHandler);
+
+            // Get row data
+            var current_row = $(this).parents('tr');//Get the current row
+            if (current_row.hasClass('child')) {//Check if the current row is a child row
+                current_row = current_row.prev();//If it is, then point to the row before it (its 'parent')
+            }
+            const data = dt_subscribers.row(current_row).data();//At this point, current_row refers to a valid row in the table, whether is a child row (collapsed by the DataTable's responsiveness) or a 'normal' row
+            console.log('Row data: ' + data);
+
+            selectedSubscriberID = data[0];
+            
+            dt_billing_history.clear().draw();
+            dt_billing_history.ajax.url(`/bds/subscribers/${selectedSubscriberID}/billings`).load();
+        });
+
+
+        $('#frm_edit_sub_area').validate({
+            'rules': {
+                'name': {
+                    'required': true
+                },
+                'description': {
+                    'required': true,
+                },
+                'area': {
+                    'required': true,
+                },
+            },
+            'submitHandler': function(form){
+                var xform = $(form);
+
+                swal({
+                    title: `Update this Sub Area?`,
+                    text: "Double check your inputted data!",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonClass: "btn-danger",
+                    confirmButtonText: "Confirm!",
+                    closeOnConfirm: false,
+                    showLoaderOnConfirm: true
+                }, function(){
+                    setTimeout(function () {
+                        const editURL = `/bds/sub-areas/${selectedSubscriberID}/edit`;
+
+                        $.ajax({
+                            type: xform.attr('method'),
+                            url: editURL,
+                            data: xform.serialize(),
+                            success: function (response) {
+                                dt_subscribers.ajax.reload();
+
+                                swal("Success!", response.message, "success");
+
+                                event.stopPropagation();
+                                $("#mdl_edit_sub_area").removeClass('md-show');
+                            },
+                            error: function (data) {
+                                swal("Error Occured!", "Please refresh the page then try again!", "error");
+                            },
+                        });
+                    }, 500);
+                });
+            }
+        });
+
+
+        $(".close_btn").click(function(event){
+            const modal = $("#mdl_view_billing_history");
+
+			event.stopPropagation();
+            modal.removeClass('md-show');
+        });
+
+    });
+</script>
+{% endblock scripts %}
+
+
+{% block content %}
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- Main-body start -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- Page-header start -->
+                <div class="page-header">
+                    <div class="row align-items-end">
+                        <div class="col-lg-8">
+                            <div class="page-header-title">
+                                <div class="d-inline">
+                                    <h4>Subscribers</h4>
+                                    <span>List of Subscribers</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="page-header-breadcrumb">
+                                <!--                                 
+                                <ul class="breadcrumb-title">
+                                    <li class="breadcrumb-item">
+                                        <a href="index-1.htm"> <i class="feather icon-home"></i> </a>
+                                    </li>
+                                    <li class="breadcrumb-item"><a href="#!">Billing</a>
+                                    </li>
+                                </ul> -->
+                                <button type="button" class="btn btn-primary waves-effect waves-light f-right d-inline-block md-trigger" data-modal="mdl_create_sub_area"> <i class="icofont icofont-plus m-r-5"></i> Create
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Page-header end -->
+
+                <div class="page-body">
+                    <!-- Server Side Processing table start -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Subscribers List</h5>
+                            <!-- <span>Responsive will automatically detect new DataTable instances being created on a page and initialize itself if it finds the responsive option or responsive class name on the table, as shown in the other examples.</span> -->
+                            <div class="card-header-right">
+                                <ul class="list-unstyled card-option">
+                                    <li><i class="feather icon-maximize full-card"></i></li>
+                                    <li><i class="feather icon-minus minimize-card"></i></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-block">
+                            <div class="dt-responsive table-responsive">
+                                <table id="tbl_subscribers" class="table table-striped table-bordered nowrap">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>FIRST NAME</th>
+                                            <th>LAST NAME</th>
+                                            <th>SUB AREA</th>
+                                            <th>CREATED AT</th>
+                                            <th>CREATED BY</th>
+                                            <th>ACTIONS</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Add Contact Start Model start-->
+                    <div class="md-modal md-effect-13 addcontact" id="mdl_create_sub_area">
+                        <div class="md-content">
+                            <h3 class="f-26">Add Subscriber</h3>
+                            <div>
+                                <form id="frm_create_subscriber" action="{{url_for('bp_bds.create_subscriber')}}" method="POST" novalidate="novalidate">
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="fname">FIRST NAME</label>
+                                            <input type="text" class="form-control" name="fname" placeholder="FIRST NAME" value="">
+                                        </div>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="lname">LAST NAME</label>
+                                            <input type="text" class="form-control" name="lname" placeholder="LAST NAME" value="">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="contact_no">CONTRACT NO.</label>
+                                            <input type="text" class="form-control" name="contact_no" placeholder="CONTACT NO." value="">
+                                        </div>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="email">EMAIL</label>
+                                            <input type="email" class="form-control" name="email" placeholder="EMAIL" value="">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="sub_area">SUB AREA</label>
+                                            <select name="sub_area" class="form-control">
+                                                <option value="">Choose...</option>
+
+                                                {% for sub_area in sub_areas %}
+                                                    <option value="{{sub_area.id}}">{{sub_area.name}}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="description">ADDRESS</label>
+                                            <input type="text" class="form-control" id="description" name="description" placeholder="DESCRIPTION" value="">
+                                        </div>
+                                    </div>
+                                </form>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-primary waves-effect m-r-20 f-w-600 md-close d-inline-block close_btn">Close</button>
+                                    <button form="frm_create_subscriber" type="submit" class="btn btn-primary waves-effect m-r-20 f-w-600 d-inline-block save_btn">Create</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md-modal md-effect-13 addcontact" id="mdl_edit_sub_area">
+                        <div class="md-content">
+                            <h3 class="f-26">Edit Sub Area</h3>
+                            <div>
+                                <div class="h-100 row align-items-center">
+                                    <div class="col">
+                                        <div class="preloader3 loader-block">
+                                            <div class="circ1 loader-info"></div>
+                                            <div class="circ2 loader-info"></div>
+                                            <div class="circ3 loader-info"></div>
+                                            <div class="circ4 loader-info"></div>
+                                        </div>
+                                    </div>
+                                  </div>
+                                <form id="frm_edit_sub_area" class="frm-edit-group" method="POST" novalidate="novalidate">
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="input_edit_name">NAME</label>
+                                            <input id="input_edit_name" type="text" class="form-control" name="name" placeholder="NAME" required="" value="">
+                                        </div>
+                                        
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="input_edit_description">DESCRIPTION</label>
+                                            <input id="input_edit_description" type="text" class="form-control" name="description" placeholder="DESCRIPTION" required="" value="">
+                                            
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-12 mb-3">
+                                            <label for="input_edit_area">AREA</label>
+                                            <select id="input_edit_area" name="area" class="form-control">
+                                                <option value="">Choose...</option>
+
+                                                {% for area in areas %}
+                                                    <option value="{{area.id}}">{{area.name}}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </form>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-primary waves-effect m-r-20 f-w-600 md-close d-inline-block close_btn">Close</button>
+                                    <button form="frm_edit_sub_area" type="submit" class="frm-edit-group btn btn-primary waves-effect m-r-20 f-w-600 d-inline-block save_btn">Save Changes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md-modal md-effect-13 addcontact" id="mdl_view_billing_history">
+                        <div class="md-content">
+                            <h3 class="f-26">View Billing History</h3>
+                            <div>
+                                <div class="dt-responsive table-responsive">
+                                    <table id="tbl_billing_history" class="table table-striped table-bordered nowrap">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>STATUS</th>
+                                                <th>CONTRACT NO.</th>
+                                                <th>NAME</th>
+                                                <th>ADDRESS</th>
+                                                <th>DELIVERED BY</th>
+                                                <th>DELIVERED AT</th>
+                                                <th>ACTIONS</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-primary waves-effect m-r-20 f-w-600 md-close d-inline-block close_btn">Close</button>
+                                </div>
+                                <div id="mylightbox"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md-overlay"></div>
+                    <!-- Add Contact Ends Model end-->
+                </div>
+            </div>
+        </div>
+
+        <!-- Warning Section Starts -->
+        <div id="styleSelector">
+
+        </div>
+    </div>
+</div>
+{% endblock content %}

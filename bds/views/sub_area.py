@@ -1,6 +1,7 @@
 from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash, jsonify, render_template
 from flask_login import login_required
+import pymongo
 from sqlalchemy.sql.expression import table
 from app.admin.templating import admin_edit, admin_render_template
 from app.admin.templating import admin_table
@@ -65,7 +66,10 @@ def fetch_sub_areas_dt():
             {"$lookup": {"from": "bds_areas", "localField": "area_id",
                          "foreignField": "_id", 'as': "area"}},
             {"$skip": start},
-            {"$limit": length}
+            {"$limit": length},
+            {"$sort": {
+                'created_at': pymongo.DESCENDING
+            }}
         ]))
         total_records = len(SubArea.find_all())
 

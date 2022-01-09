@@ -4,6 +4,7 @@ import enum
 from typing import Collection
 from flask_login import current_user
 from bson.objectid import ObjectId
+import pymongo
 import pytz
 from app import mongo
 from config import TIMEZONE
@@ -83,7 +84,7 @@ class BaseModel(object):
     @classmethod
     def find_all(cls):
         try:
-            models = list(cls.__collection__.find())
+            models = list(cls.__collection__.find().sort('created_at', pymongo.DESCENDING))
             
             data = []
 
@@ -97,7 +98,7 @@ class BaseModel(object):
     @classmethod
     def find_with_range(cls, start, length):
         try:
-            models = list(cls.__collection__.find().skip(start).limit(length))
+            models = list(cls.__collection__.find().sort('created_at', pymongo.DESCENDING).skip(start).limit(length))
             
             data = []
 
@@ -111,7 +112,7 @@ class BaseModel(object):
     @classmethod
     def search(cls, search):
         try:
-            models = list(cls.__collection__.find(search))
+            models = list(cls.__collection__.find(search).sort('created_at', pymongo.DESCENDING))
             
             data = []
 

@@ -67,4 +67,3 @@ migrations/
 instance/
 .env
 pylintrc
-app/admin/static/img/

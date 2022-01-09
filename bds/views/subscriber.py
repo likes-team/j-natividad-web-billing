@@ -1,13 +1,16 @@
 from datetime import datetime
 from bson.objectid import ObjectId
 from flask import redirect, url_for, request, flash, jsonify
+from flask.templating import render_template
+from flask_cors.decorator import cross_origin
 from flask_login import current_user, login_required
-from app import csrf
+import pymongo
+from app import csrf, mongo
 from app.admin.templating import admin_table, admin_edit
 from app.auth.models import Role
 from bds import bp_bds
 from bds.globals import SUBSCRIBER_ROLE
-from bds.models import Subscriber, Delivery
+from bds.models import SubArea, Subscriber, Delivery
 from bds.forms import SubscriberForm, SubscriberEditForm
 from decimal import Decimal
 
@@ -15,59 +18,165 @@ from decimal import Decimal
 @bp_bds.route('/subscribers')
 @login_required
 def subscribers():
-    # fields = [Subscriber.id, Subscriber.fname,Subscriber.lname,Subscriber.created_at, Subscriber.updated_by, Subscriber.updated_at]
-    fields = ['id', 'First Name', 'Last Name',  'Sub Area','Created At', 'Updated At']
-    form = SubscriberForm()
+    sub_areas = SubArea.find_all()
+    return render_template("bds/adminty_subscriber.html", sub_areas=sub_areas)
 
+
+@bp_bds.route('/subscribers/dt', methods=['GET'])
+def fetch_subscribers_dt():
+    draw = request.args.get('draw')
+    start, length = int(request.args.get('start')), int(request.args.get('length'))
+    search_value = request.args.get("search[value]")
     table_data = []
+    print(search_value)
 
-    subscribers = Subscriber.find_all_by_role_id(role_id=SUBSCRIBER_ROLE.id)
-    
-    print(subscribers)
-    subscriber : Subscriber 
-    for subscriber in subscribers:
+    if search_value != '':
+        query = list(mongo.db.auth_users.aggregate([
+            {"$match": {
+                "role_id": SUBSCRIBER_ROLE.id,
+                "lname": {"$regex": search_value}
+            }},
+            {"$lookup": {"from": "bds_sub_areas", "localField": "sub_area_id",
+                         "foreignField": "_id", 'as': "sub_area"}},
+            {"$sort": {
+                'fname': pymongo.ASCENDING
+            }}
+        ]))
+        total_records = len(query)
+    else:
+        query = list(mongo.db.auth_users.aggregate([
+            {"$match": {"role_id": SUBSCRIBER_ROLE.id}},
+            {"$lookup": {"from": "bds_sub_areas", "localField": "sub_area_id",
+                         "foreignField": "_id", 'as': "sub_area"}},
+            {"$skip": start},
+            {"$limit": length},
+            {"$sort": {
+                'fname': pymongo.ASCENDING
+            }}
+        ]))
+        total_records = len(Subscriber.find_all())
+
+    filtered_records = len(query)
+
+    print("START: ", start)
+    print("DRAW: ", draw)
+    print("LENGTH: ", length)
+    print("filtered_records: ", filtered_records)
+    print("total_records: ", total_records)
+
+    for data in query:
+        subscriber: Subscriber = Subscriber(data=data)
         table_data.append((
             str(subscriber.id),
             subscriber.fname,
             subscriber.lname,
-            subscriber.sub_area_name,
-            subscriber.created_at,
-            subscriber.updated_at,
+            subscriber.sub_area.name if subscriber.sub_area is not None else '',
+            subscriber.created_at_local,
+            subscriber.created_by,
+            ''
         ))
+        
+    response = {
+        'draw': draw,
+        'recordsTotal': filtered_records,
+        'recordsFiltered': total_records,
+        'data': table_data
+    }
+    return jsonify(response)
 
-    return admin_table(Subscriber, fields=fields, form=form, create_url="bp_bds.create_subscriber",\
-        edit_url="bp_bds.edit_subscriber", modals=["bds/subscriber/bds_upload_subscribers_csv.html"],\
-            action_template="bds/subscriber/bds_subscriber_action.html",\
-                table_data=table_data, view_modal=False)
+
+@bp_bds.route('/subscribers/<string:subscriber_id>/billings')
+@cross_origin()
+def get_subscriber_billings(subscriber_id):
+    # try:
+    query = list(mongo.db.bds_deliveries.aggregate([
+        {'$match': {
+            'subscriber_id': ObjectId(subscriber_id),
+        }},
+        {'$lookup': {
+            'from': "auth_users", 
+            "localField": "subscriber_id", 
+            "foreignField": "_id",
+            'as': 'subscriber'
+            }},
+        {'$lookup': {
+            'from': "bds_areas", 
+            "localField": "area_id", 
+            "foreignField": "_id",
+            'as': 'area'
+            }},
+        {'$lookup': {
+            'from': "bds_sub_areas", 
+            "localField": "sub_area_id", 
+            "foreignField": "_id",
+            'as': 'sub_area'
+            }},
+        {'$lookup': {
+            'from': "auth_users", 
+            "localField": "messenger_id", 
+            "foreignField": "_id",
+            'as': 'messenger'
+            }}
+    ]))
+    
+    table_data = []
+
+    for data in query:
+        billing: Delivery = Delivery(data=data)
+        table_data.append([
+            str(billing.subscriber_id),
+            billing.status,
+            billing.subscriber.contract_no,
+            billing.subscriber.full_name,
+            billing.subscriber.address,
+            billing.messenger.full_name if billing.messenger is not None else '',
+            billing.date_mobile_delivery if billing.messenger is not None else '',
+            "",
+            billing.image_path
+        ])
+
+    response = {
+        'data': table_data
+    }
+
+    return jsonify(response), 200
+    # except Exception as err:
+    #     return jsonify({
+    #         'status': 'error',
+    #         'message': str(err)
+    #     }), 500
 
 
 @bp_bds.route('/subscribers/create',methods=['POST'])
 @login_required
 def create_subscriber():
-    form = SubscriberForm()
-    
-    if not form.validate_on_submit():
-        for key, value in form.errors.items():
-            flash(str(key) + str(value), 'error')
-        return redirect(url_for('bp_bds.subscribers'))
-    
-    # try:
-    new = Subscriber()
-    new.fname = form.fname.data
-    new.lname = form.lname.data
-    new.email = form.email.data if form.email.data != '' else None
-    new.address = form.address.data
-    new.sub_area_id = ObjectId(form.sub_area_id.data) if form.sub_area_id.data != '' else None
-    new.longitude = Decimal(form.longitude.data) if form.longitude.data != '' else None
-    new.latitude = Decimal(form.latitude.data) if form.latitude.data != '' else None
-    new.contract_no = form.contract_number.data
-    new.role_id = SUBSCRIBER_ROLE.id
-    new.role_name = SUBSCRIBER_ROLE.name
-    new.save()
-    flash('New subscriber added successfully!','success')
-    # except Exception as e:
-    #     flash(str(e), 'error')
-    return redirect(url_for('bp_bds.subscribers'))
+    form = request.form
+ 
+    try:
+        new = Subscriber()
+        new.fname = form.get('fname', '')
+        new.lname = form.get('lname', '')
+        new.email = form.get('email', '')
+        new.contract_no = form.get('contract_no', '')
+        new.address = form.get('address', '')
+        new.sub_area_id = ObjectId(form.get('sub_area')) if form.get('sub_area') != '' else None
+        new.role_id = SUBSCRIBER_ROLE.id
+        new.role_name = SUBSCRIBER_ROLE.name
+        new.save()
+        
+        response = {
+            'status': 'success',
+            'data': new.toJson(),
+            'message': "New subscriber added successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        print(err)
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
+           
 
 
 @bp_bds.route('/subscribers/<string:oid>/edit',methods=['GET','POST'])

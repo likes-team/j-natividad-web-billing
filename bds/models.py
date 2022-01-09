@@ -236,7 +236,7 @@ class Subscriber(User):
     establishment: str
     # deliveries = db.relationship('Delivery', cascade='all,delete', backref="subscriber",order_by="desc(Delivery.delivery_date)")
     sub_area_id: ObjectId
-    _sub_area: SubArea
+    sub_area: SubArea
     sub_area_name: str
 
     def __init__(self, data=None):
@@ -253,15 +253,13 @@ class Subscriber(User):
             self.sub_area_name = data.get('sub_area_name', '')
 
             if 'sub_area' in data and len(data['sub_area']) > 0:
-                self._sub_area = SubArea(data=data['sub_area'][0])
+                self.sub_area = SubArea(data=data['sub_area'][0])
+            else:
+                self.sub_area = None
 
     @property
     def url(self):
         return "bp_bds.subscribers"
-
-    @property
-    def sub_area(self):
-        return self._sub_area
 
 
 class Delivery(BaseModel, Admin):

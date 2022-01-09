@@ -17,11 +17,6 @@ from app import mongo
 @bp_bds.route('/billings')
 @login_required
 def billings():
-    fields = [
-        "id", "active", "number", "name", "description", "date_from", 
-        "date_to", "created_by", "created_at"]
-    form = BillingForm()
-
     _billing_generated_number = ""
 
     # query = db.session.query(Billing).order_by(Billing.id.desc()).first()
@@ -32,14 +27,7 @@ def billings():
     else:
         _billing_generated_number = "BILL00000001"
 
-    form.number.auto_generated = _billing_generated_number
-    
     return render_template("bds/adminty_billing.html", billing_generated_number=_billing_generated_number)
-    
-    # return admin_table(Billing, fields=fields, form=form, create_url='bp_bds.create_billing',\
-    #     edit_url="bp_bds.edit_billing", table_template="bds/adminty_billing.html",\
-    #         view_modal_template="bds/bds_billing_view_modal.html", billing_generated_number=_billing_generated_number,
-    #         table_data=[])
 
 
 @bp_bds.route('/billings/new-generated-number', methods=['GET'])

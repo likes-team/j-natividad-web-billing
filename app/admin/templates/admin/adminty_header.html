@@ -4,7 +4,7 @@
             <a class="mobile-menu" id="mobile-collapse" href="#!">
                 <i class="feather icon-menu"></i>
             </a>
-            <a href="index-1.htm">
+            <a href="{{url_for('bp_admin.dashboard')}}">
                 <img class="img-fluid" src="{{url_for('bp_admin.static', filename='img/logo.png')}}" alt="Theme-Logo">
             </a>
             <a class="mobile-options">
@@ -111,7 +111,7 @@
                                 </a>
                             </li>
                             <li>
-                                <a href="auth-normal-sign-in.htm">
+                                <a href="{{ url_for('bp_auth.logout') }}">
                                     <i class="feather icon-log-out"></i> Logout
                                 </a>
                             </li>
