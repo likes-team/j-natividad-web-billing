@@ -131,7 +131,7 @@ def get_billing(billing_id):
         return jsonify({
             'status': 'error',
             'message': str(err)
-        }), 200
+        }), 500
 
 
 @bp_bds.route('/billings/create',methods=['POST'])

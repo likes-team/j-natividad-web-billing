@@ -19,6 +19,11 @@
 <!-- Multi Select css -->
 <link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='bower_components/bootstrap-multiselect/css/bootstrap-multiselect.css')}}">
 <link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='bower_components/multiselect/css/multi-select.css')}}">
+<style>
+    .ms-container {
+        width: 100% !important;
+    }
+</style>
 {% endblock head %}
 
 
@@ -56,7 +61,6 @@
 <!-- Multi select -->
 <script type="text/javascript" src="{{url_for('bp_admin.static', filename='bower_components/multiselect/js/jquery.multi-select.js')}}"></script>
 <script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/jquery.quicksearch.js')}}"></script>
-<script type="text/javascript" src="{{url_for('bp_admin.static', filename='pages/advance-elements/select2-custom.js')}}"></script>
 <script>
     $.ajaxSetup({
         beforeSend: function (xhr, settings) {
@@ -91,9 +95,9 @@
     $(document).ready(function () {
         $("#li_messenger").addClass('active');
 
-        var SELECTEDBILLINGID;
+        var SELECTEDMESSENGERID;
 
-        var dt_billings = $('#tbl_messengers').DataTable({
+        var dt_messengers = $('#tbl_messengers').DataTable({
             "pageLength": 25,
             "processing": true,
             "serverSide": true,
@@ -113,9 +117,10 @@
                     return `
                     <div class="tabledit-toolbar btn-toolbar" style="text-align: left;">
                         <div class="btn-group btn-group-sm" style="float: none;">
-                            <button type="button" class="btn-edit tabledit-edit-button btn btn-primary waves-effect waves-light md-trigger" data-modal="mdl_edit_billing" style="float: none;margin: 5px;">
+                            <button type="button" class="btn-edit btn btn-primary waves-effect waves-light md-trigger" data-modal="mdl_edit_messenger" style="float: none;margin: 5px;">
                                 <span class="icofont icofont-ui-edit"></span>
                             </button>
+                        </div>
                     </div>
                     `
                 }
@@ -141,57 +146,9 @@
             }  
         });
 
-        dt_billings.on( 'search.dt', function () {
-            dt_billings.search();
+        dt_messengers.on( 'search.dt', function () {
+            dt_messengers.search();
         } );
-
-        $("#tbl_billings tbody").on('click', '.btn-set', function () {
-            // Get row data
-            var current_row = $(this).parents('tr');//Get the current row
-            if (current_row.hasClass('child')) {//Check if the current row is a child row
-                current_row = current_row.prev();//If it is, then point to the row before it (its 'parent')
-            }
-            const data = dt_billings.row(current_row).data();//At this point, current_row refers to a valid row in the table, whether is a child row (collapsed by the DataTable's responsiveness) or a 'normal' row
-            console.log('Row data:'+data);
-
-            const dataStatus = data[1];
-            const status = (dataStatus == 1 || dataStatus == true) ? "Inactive" : "Active";
-
-            SELECTEDBILLINGID = data[0];
-
-            swal({
-                title: `Are you sure to set this ${status}?`,
-                text: "This will affect incoming deliveries!",
-                type: "warning",
-                showCancelButton: true,
-                confirmButtonClass: "btn-danger",
-                confirmButtonText: "Confirm!",
-                closeOnConfirm: false,
-                showLoaderOnConfirm: true
-            },
-                function () {
-                    const url = "/bds/billings/" + SELECTEDBILLINGID + "/set-active";
-
-                    setTimeout(function () {
-                        $.ajax({ 
-                            url: url,
-                            type: "POST",
-                            dataType: "json",
-                            async: false,
-                            data: JSON.stringify({
-                                'status': !dataStatus,
-                            }),
-                            contentType: "application/json; charset=utf-8",
-                            success: function (data) {
-                                if (data.result) {
-                                    dt_billings.ajax.reload();
-                                    swal("Success!", `This billing set to ${status}`, "success");
-                                }
-                            }
-                        });
-                    }, 500);
-                });
-        });
 
 
         $("#btn_create_billing").click(function(){
@@ -244,7 +201,7 @@
                             url: xform.attr('action'),
                             data: xform.serialize(),
                             success: function (response) {
-                                dt_billings.ajax.reload();
+                                dt_messengers.ajax.reload();
 
                                 swal("Success!", response.message, "success");
 
@@ -262,9 +219,9 @@
         });
 
 
-        $("#tbl_billings tbody").on('click', '.btn-edit', function () {
+        $("#tbl_messengers tbody").on('click', '.btn-edit', function () {
             var overlay = document.querySelector('.md-overlay');
-            const modal = $("#mdl_edit_billing");
+            const modal = $("#mdl_edit_messenger");
             modal.addClass('md-show');
             function removeModalHandler() {
                 modal.removeClass('md-show');
@@ -277,29 +234,40 @@
             if (current_row.hasClass('child')) {//Check if the current row is a child row
                 current_row = current_row.prev();//If it is, then point to the row before it (its 'parent')
             }
-            const data = dt_billings.row(current_row).data();//At this point, current_row refers to a valid row in the table, whether is a child row (collapsed by the DataTable's responsiveness) or a 'normal' row
+            const data = dt_messengers.row(current_row).data();//At this point, current_row refers to a valid row in the table, whether is a child row (collapsed by the DataTable's responsiveness) or a 'normal' row
             console.log('Row data: ' + data);
 
-            SELECTEDBILLINGID = data[0];
+            SELECTEDMESSENGERID = data[0];
 
             $(".frm-edit-group").attr('style','display:none !important');
             $(".preloader3").show();
-            $("#input_edit_billing_no").val('');
-            $("#input_edit_name").val('');
-            $("#input_edit_description").val('');
-            $("#input_edit_date_from").val('');
-            $("#input_edit_date_to").val('');
+
+            $("#input_edit_fname").val('');
+            $("#input_edit_lname").val('');
+            $("#input_edit_username").val('');
+            $("#input_edit_email").val('');
+            $("#select_areas").empty();
             
             $.getJSON(
-                `/bds/billings/${SELECTEDBILLINGID}`, function(response){
+                `/bds/messengers/${SELECTEDMESSENGERID}`, function(response){
                 if(response.status == "success"){
-                    $("#input_edit_billing_no").val(response.data.billing_no);
-                    $("#input_edit_name").val(response.data.name);
-                    $("#input_edit_description").val(response.data.description);
-                    console.log(response.data.date_from);
-                    $("#input_edit_date_from").val(response.data.date_from);
-                    $("#input_edit_date_to").val(response.data.date_to);
+                    $("#input_edit_fname").val(response.data.fname);
+                    $("#input_edit_lname").val(response.data.lname);
+                    $("#input_edit_username").val(response.data.username);
+                    $("#input_edit_email").val(response.data.email);
                     
+                    console.log(response.data.available_areas);
+
+                    for(var i=0; i < response.data.available_areas.length; i++){
+                        $("#select_areas").append($("<option></option>").attr("value", response.data.available_areas[i].id).text(response.data.available_areas[i].name));
+                    }
+
+                    for(var i=0; i < response.data.messenger_areas.length; i++){
+                        $("#select_areas").append($("<option></option>").attr("value", response.data.messenger_areas[i].id).attr('selected','selected').text(response.data.messenger_areas[i].name));
+                    }
+
+                    $("#select_areas").multiSelect('refresh');
+
                     $(".preloader3").hide();
                     $(".frm-edit-group").show();
                 } else if(response.status == "error"){
@@ -311,19 +279,19 @@
         });
 
 
-        $('#frm_edit_billing').validate({
+        $('#frm_edit_messenger').validate({
             'rules': {
-                'name': {
+                'fname': {
                     'required': true
                 },
-                'description': {
+                'lname': {
                     'required': true,
                 },
-                'date_from': {
+                'username': {
                     'required': true
                 },
-                'date_to': {
-                    'required': true,
+                'email': {
+                    'required': false,
                 },
             },
             'submitHandler': function(form){
@@ -333,7 +301,7 @@
                 var xform = $(form);
 
                 swal({
-                    title: `Update this billing?`,
+                    title: `Update this messenger?`,
                     text: "Double check your inputted data!",
                     type: "warning",
                     showCancelButton: true,
@@ -343,19 +311,19 @@
                     showLoaderOnConfirm: true
                 }, function(){
                     setTimeout(function () {
-                        const editURL = `/bds/billings/${SELECTEDBILLINGID}/edit`;
+                        const editURL = `/bds/messengers/${SELECTEDMESSENGERID}/edit`;
 
                         $.ajax({
                             type: xform.attr('method'),
                             url: editURL,
                             data: xform.serialize(),
                             success: function (response) {
-                                dt_billings.ajax.reload();
+                                dt_messengers.ajax.reload();
 
                                 swal("Success!", response.message, "success");
 
                                 event.stopPropagation();
-                                $("#mdl_edit_billing").removeClass('md-show');
+                                $("#mdl_edit_messenger").removeClass('md-show');
                             },
                             error: function (data) {
                                 swal("Error Occured!", "Please refresh the page then try again!", "error");
@@ -367,8 +335,45 @@
         });
 
 
+        $('.searchable').multiSelect({
+            selectableHeader: "<input type='text' class='form-control' autocomplete='off' placeholder='Available areas'>",
+            selectionHeader: "<input type='text' class='form-control' autocomplete='off' placeholder='Selected areas'>",
+            afterInit: function(ms) {
+                var that = this,
+                    $selectableSearch = that.$selectableUl.prev(),
+                    $selectionSearch = that.$selectionUl.prev(),
+                    selectableSearchString = '#' + that.$container.attr('id') + ' .ms-elem-selectable:not(.ms-selected)',
+                    selectionSearchString = '#' + that.$container.attr('id') + ' .ms-elem-selection.ms-selected';
+    
+                that.qs1 = $selectableSearch.quicksearch(selectableSearchString)
+                    .on('keydown', function(e) {
+                        if (e.which === 40) {
+                            that.$selectableUl.focus();
+                            return false;
+                        }
+                    });
+    
+                that.qs2 = $selectionSearch.quicksearch(selectionSearchString)
+                    .on('keydown', function(e) {
+                        if (e.which == 40) {
+                            that.$selectionUl.focus();
+                            return false;
+                        }
+                    });
+            },
+            afterSelect: function() {
+                this.qs1.cache();
+                this.qs2.cache();
+            },
+            afterDeselect: function() {
+                this.qs1.cache();
+                this.qs2.cache();
+            }
+        });
+
+
         $(".close_btn").click(function(event){
-            const modal = $("#mdl_edit_billing");
+            const modal = $("#mdl_edit_messenger");
 
 			event.stopPropagation();
             modal.removeClass('md-show');
@@ -478,9 +483,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="md-modal md-effect-13 addcontact" id="mdl_edit_billing">
+                    <div class="md-modal md-effect-13 addcontact" id="mdl_edit_messenger">
                         <div class="md-content">
-                            <h3 class="f-26">Edit Billing</h3>
+                            <h3 class="f-26">Edit Messenger</h3>
                             <div>
                                 <div class="h-100 row align-items-center">
                                     <div class="col">
@@ -491,37 +496,38 @@
                                             <div class="circ4 loader-info"></div>
                                         </div>                                    </div>
                                   </div>
-                                <form id="frm_edit_billing" class="frm-edit-group" method="POST" novalidate="novalidate">
+                                  <form id="frm_edit_messenger" method="POST" novalidate="novalidate">
                                     <div class="form-row">
-                                        <div class="col-md-4 mb-3">
-                                            <label for="number">BILLING NO.</label>
-                                            <input id="input_edit_billing_no" type="text" class="form-control" name="number" placeholder="BILLING NO." required="" readonly="" value="">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="fname">FIRST NAME</label>
+                                            <input id="input_edit_fname" type="text" class="form-control" name="fname" placeholder="FIRST NAME" required="" value="">
                                         </div>
-                                        <div class="form-group col-md-4 mb-3">
-                                            <label for="input_edit_name">NAME</label>
-                                            <input id="input_edit_name" type="text" class="form-control" name="name" placeholder="NAME" required="" value="">
-                                        </div>
-                                        
-                                        <div class="form-group col-md-4 mb-3">
-                                            <label for="input_edit_description">DESCRIPTION</label>
-                                            <input id="input_edit_description" type="text" class="form-control" name="description" placeholder="DESCRIPTION" required="" value="">
-                                            
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="lname">LAST NAME</label>
+                                            <input id="input_edit_lname" type="text" class="form-control" name="lname" placeholder="LAST NAME" required="" value="">
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group col-md-6 mb-3">
-                                            <label for="input_date_from">DATE FROM</label>
-                                            <input id="input_edit_date_from" type="date" class="form-control" name="date_from" placeholder="DATE FROM" required="" value="">
+                                            <label for="username">USERNAME</label>
+                                            <input id="input_edit_username" type="text" class="form-control" name="username" placeholder="USERNAME" required="" value="">
                                         </div>
                                         <div class="form-group col-md-6 mb-3">
-                                            <label for="input_date_from">DATE TO</label>
-                                            <input id="input_edit_date_to" type="date" class="form-control" name="date_to" placeholder="DATE TO" required="" value="">
+                                            <label for="email">EMAIL</label>
+                                            <input id="input_edit_email" type="email" class="form-control" name="email" placeholder="EMAIL" required="" value="">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-12 mb-3">
+                                            <h4 class="sub-title">Searchable</h4>
+                                            <select id='select_areas' name="selected_areas[]" class="searchable" multiple='multiple'>
+                                            </select>
                                         </div>
                                     </div>
                                 </form>
                                 <div class="text-center">
                                     <button type="button" class="btn btn-primary waves-effect m-r-20 f-w-600 md-close d-inline-block close_btn">Close</button>
-                                    <button form="frm_edit_billing" id="btn_update_billing" type="submit" class="frm-edit-group btn btn-primary waves-effect m-r-20 f-w-600 d-inline-block save_btn">Save Changes</button>
+                                    <button form="frm_edit_messenger" id="btn_update_billing" type="submit" class="frm-edit-group btn btn-primary waves-effect m-r-20 f-w-600 d-inline-block save_btn">Save Changes</button>
                                 </div>
                             </div>
                         </div>

@@ -4,6 +4,7 @@ from flask import redirect, url_for, request, flash
 from flask.json import jsonify
 from flask.templating import render_template
 from flask_login import current_user, login_required
+from sqlalchemy.sql.expression import select
 from app import mongo
 from app.admin.templating import admin_render_template, admin_table, admin_edit
 from app.auth.models import Role, User
@@ -28,6 +29,51 @@ def messengers():
     #         create_button=True, create_modal=False, table_template="bds/messenger/messenger_table.html")
 
 
+@bp_bds.route('/messengers/<string:messenger_id>', methods=['GET'])
+@login_required
+def get_messenger(messenger_id):
+    try:
+        messenger = Messenger.find_one_by_id(id=messenger_id)
+        
+        areas = Area.find_all()
+        
+        messenger_areas = []
+        available_areas = []
+        
+        area: Area
+        for area in areas:
+            if not area.id in messenger.areas:
+                available_areas.append({
+                    'id': str(area.id),
+                    'name': area.name
+                })
+            else:
+                messenger_areas.append({
+                    'id': str(area.id),
+                    'name': area.name
+                })
+
+        response = {
+            'status': 'success',
+            'data': {
+                'id': str(messenger.id),
+                'fname': messenger.fname,
+                'lname': messenger.lname,
+                'username': messenger.username,
+                'email': messenger.email,
+                'available_areas': available_areas,
+                'messenger_areas': messenger_areas
+            },
+            'message': ""
+        }
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
+
+
 @bp_bds.route('/messengers/dt', methods=['GET'])
 def fetch_messengers_dt():
     draw = request.args.get('draw')
@@ -49,8 +95,6 @@ def fetch_messengers_dt():
             {"$limit": length}
         ]))
         total_records = len(Messenger.find_all_by_role_id(MESSENGER_ROLE.id))
-
-    print(query)
 
     filtered_records = len(query)
 
@@ -146,6 +190,35 @@ def create_messenger():
 @bp_bds.route('/messengers/<string:oid>/edit',methods=['GET','POST'])
 @login_required
 def edit_messenger(oid):
+    form = request.form
+    print(form)
+    selected_areas = form.getlist('selected_areas[]')
+    print(selected_areas)
+
+    new_areas = [ObjectId(area_id) for area_id in selected_areas]
+
+    try:
+        mongo.db.auth_users.update_one({
+            "_id": ObjectId(oid)
+        }, {"$set": {
+            "fname": form.get('fname'),
+            'lname': form.get('lname'),
+            'username': form.get('username'),
+            'email': form.get('email'),
+            'areas': new_areas
+        }})
+        
+        response = {
+            'status': 'success',
+            'message': "Messenger updated Successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
+
     ins: Messenger = Messenger.find_one_by_id(id=oid)
     form = MessengerEditForm(obj=ins)
 

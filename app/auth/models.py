@@ -103,6 +103,7 @@ class User(UserMixin, BaseModel, Admin):
     role_name: str
     is_admin: bool
     _role: Role
+    areas: list
 
     def __init__(self, data=None):
         super(User, self).__init__(data=data)
@@ -117,6 +118,7 @@ class User(UserMixin, BaseModel, Admin):
             self.permissions = data.get("permissions", [])
             self.is_superuser = data.get('is_superuser', False)
             self.is_admin = data.get('is_admin', False)
+            self.areas = data.get('areas', [])
 
             if 'role' in data:
                 self._role = Role(data=data['role'][0])

@@ -93,6 +93,9 @@ def get_subscriber_billings(subscriber_id):
         {'$match': {
             'subscriber_id': ObjectId(subscriber_id),
         }},
+        {"$sort": {
+            'created_at': pymongo.DESCENDING
+        }},
         {'$lookup': {
             'from': "auth_users", 
             "localField": "subscriber_id", 
@@ -116,7 +119,7 @@ def get_subscriber_billings(subscriber_id):
             "localField": "messenger_id", 
             "foreignField": "_id",
             'as': 'messenger'
-            }}
+            }},
     ]))
     
     table_data = []
@@ -126,11 +129,9 @@ def get_subscriber_billings(subscriber_id):
         table_data.append([
             str(billing.subscriber_id),
             billing.status,
-            billing.subscriber.contract_no,
-            billing.subscriber.full_name,
-            billing.subscriber.address,
-            billing.messenger.full_name if billing.messenger is not None else '',
             billing.date_mobile_delivery if billing.messenger is not None else '',
+            billing.subscriber.full_name,
+            billing.messenger.full_name if billing.messenger is not None else '',
             "",
             billing.image_path
         ])
