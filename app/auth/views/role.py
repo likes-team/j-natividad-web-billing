@@ -1,4 +1,4 @@
-from flask import flash, redirect, url_for, request, jsonify
+from flask import flash, redirect, url_for, request, jsonify, render_template
 from flask_cors import cross_origin
 from flask_login import current_user, login_required
 from app.auth import bp_auth
@@ -13,27 +13,8 @@ from app.auth.permissions import load_permissions
 
 @bp_auth.route('/roles')
 @login_required
-def roles(**options):
-    fields = ['id', 'name', 'created_at', 'updated_at']
-    form = RoleCreateForm()
-    form.inline.data = CoreModel.find_all()
-
-    _roles = Role.find_all()
-
-    _table_data = []
-
-    for role in _roles:
-        _table_data.append((
-            role.id,
-            role.name,
-            role.created_at_local,
-            role.updated_at_local
-        ))
-
-    return admin_table(Role, fields=fields, form=form, create_modal_template="auth/role_create_modal.html", \
-        create_url='bp_auth.create_role',edit_url='bp_auth.edit_role', \
-            view_modal_template="auth/role_view_modal.html", table_data=_table_data,\
-                view_modal_url='/auth/get-view-role-data' ,**options)
+def roles():
+    return render_template("auth/adminty_role.html")
 
 
 @bp_auth.route('/get-view-role-data', methods=['GET'])

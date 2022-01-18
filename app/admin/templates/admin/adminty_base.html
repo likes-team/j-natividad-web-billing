@@ -35,8 +35,17 @@
     <link rel="stylesheet" type="text/css" href="{{url_for('bp_admin.static', filename='css/style.css')}}">
     <link rel="stylesheet" type="text/css"
         href="{{url_for('bp_admin.static', filename='css/jquery.mCustomScrollbar.css')}}">
-
+    <!-- sweet alert framework -->
+    <link rel="stylesheet" type="text/css"
+        href="{{url_for('bp_admin.static', filename='bower_components/sweetalert/css/sweetalert.css')}}">
+    
     {% block head %} {% endblock head %}
+
+    <style>
+        div.dataTables_wrapper div.dataTables_processing {
+            top: 0;
+         }
+    </style>
 </head>
 <body>
     <!-- Pre-loader start -->
@@ -160,6 +169,10 @@
     <script src="{{url_for('bp_admin.static', filename='js/jquery.mCustomScrollbar.concat.min.js')}}"></script>
     <!-- custom js -->
     <script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/script.js')}}"></script>
+    <!-- sweet alert js -->
+    <script type="text/javascript"
+        src="{{url_for('bp_admin.static', filename='bower_components/sweetalert/js/sweetalert.min.js')}}"></script>
+    <script type="text/javascript" src="{{url_for('bp_admin.static', filename='js/modal.js')}}"></script>
 
     {% block scripts %} {% endblock scripts %}
 
@@ -189,6 +202,26 @@
         //        $(element).removeClass('is-invalid');
         //    }
         //});
+
+        $(document).ready(function(){
+            $(".unavailable").click(function(){
+                swal({
+                    title: "This feature is not yet available!",
+                    text: "Feature Unavailable",
+                    type: "info",
+                    closeOnConfirm: true,
+                });
+            });
+
+            $(".demo").click(function(){
+                swal({
+                    title: "This feature is in demo only, and not available yet!",
+                    text: "Feature Unavailable",
+                    type: "info",
+                    closeOnConfirm: true,
+                });
+            });
+        });
     </script>
 </body>
 

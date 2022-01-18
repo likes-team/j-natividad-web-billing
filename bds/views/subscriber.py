@@ -6,13 +6,11 @@ from flask_cors.decorator import cross_origin
 from flask_login import current_user, login_required
 import pymongo
 from app import csrf, mongo
-from app.admin.templating import admin_table, admin_edit
-from app.auth.models import Role
+from app.admin.templating import admin_edit
 from bds import bp_bds
 from bds.globals import SUBSCRIBER_ROLE
 from bds.models import SubArea, Subscriber, Delivery
-from bds.forms import SubscriberForm, SubscriberEditForm
-from decimal import Decimal
+from bds.forms import SubscriberEditForm
 
 
 @bp_bds.route('/subscribers')

@@ -1,43 +1,120 @@
+import pymongo
 from datetime import datetime
+from bson.objectid import ObjectId
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import current_user, login_required
 from flask_cors import cross_origin
+from app import mongo
 from app.core.models import CoreModel
 from app.core.logging import create_log
 from app.auth import bp_auth
-from app.auth.models import User, UserPermission, Role
+from app.auth.models import Role, User, UserPermission
 from app.auth.forms import UserForm, UserEditForm, UserPermissionForm
 from app.auth import auth_urls
 from app.auth.permissions import load_permissions, check_create
 from app.admin.templating import admin_table, admin_edit
+from bds.globals import ADMIN_ROLE
 
 
 
 @bp_auth.route('/users')
 @login_required
-def users(**options):
-    form = UserForm()
-    # fields = [User.id, User.username, User.fname, User.lname, Role.name, User.email]
-    fields = ['id', 'username', 'fname', 'lname', 'role', 'email']
-    models = [User]
+def users():
+    roles = [
+        ADMIN_ROLE
+    ]
+    
+    return render_template("auth/adminty_user.html", roles=roles)
 
-    query = User.find_all()
 
+@bp_auth.route('/users/<string:user_id>', methods=['GET'])
+@login_required
+def get_user(user_id):
+    try:
+        user = User.find_one_by_id(id=user_id)
+
+        response = {
+            'status': 'success',
+            'data': {
+                'id': str(user.id),
+                'fname': user.fname,
+                'lname': user.lname,
+                'username': user.username,
+                'email': user.email,
+                'role_id': str(user.role_id),
+            },
+        }
+        
+        return jsonify(response), 200
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
+
+@bp_auth.route('/users/dt', methods=['GET'])
+def fetch_users_dt():
+    draw = request.args.get('draw')
+    start, length = int(request.args.get('start')), int(request.args.get('length'))
+    search_value = request.args.get("search[value]")
     table_data = []
 
-    user: User
-    for user in query:
+    if search_value != '':
+        query = list(mongo.db.auth_users.aggregate([
+            {"$match": {
+                "role_id": ADMIN_ROLE.id,
+                "lname": {"$regex": search_value}
+            }},
+            {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
+                         "foreignField": "_id", 'as': "role"}},
+            {"$sort": {
+                'created_at': pymongo.DESCENDING
+            }}
+        ]))
+        total_records = len(query)
+    else:
+        query = list(mongo.db.auth_users.aggregate([
+            {"$match": {
+                "role_id": ADMIN_ROLE.id,
+            }},
+            {"$lookup": {"from": "auth_user_roles", "localField": "role_id",
+                         "foreignField": "_id", 'as': "role"}},
+            {"$skip": start},
+            {"$limit": length},
+            {"$sort": {
+                'created_at': pymongo.DESCENDING
+            }}
+        ]))
+        total_records = len(User.find_all_by_role_id(role_id=ADMIN_ROLE.id))
+
+    filtered_records = len(query)
+
+    print("START: ", start)
+    print("DRAW: ", draw)
+    print("LENGTH: ", length)
+    print("filtered_records: ", filtered_records)
+    print("total_records: ", total_records)
+
+    for data in query:
+        user: User = User(data=data)
         table_data.append((
-            user.id,
-            user.username,
+            str(user.id),
             user.fname,
             user.lname,
-            user.role.name,
-            user.email
+            user.username,
+            user.email,
+            user.role.name if user.role is not None else '',
+            user.created_at_local,
+            ''
         ))
-    
-    return admin_table(*models, fields=fields, form=form, create_url='bp_auth.create_user',\
-        edit_url="bp_auth.edit_user", table_data=table_data, view_modal_url='/auth/get-view-user-data', **options)
+        
+    response = {
+        'draw': draw,
+        'recordsTotal': filtered_records,
+        'recordsFiltered': total_records,
+        'data': table_data
+    }
+    return jsonify(response)
 
 
 @bp_auth.route('/get-view-user-data', methods=['GET'])
@@ -59,96 +136,66 @@ def get_view_user_data():
 
 @bp_auth.route('/users/create', methods=['POST'])
 @login_required
-def create_user(**kwargs):
-
-    if not check_create('Users'):
-        return render_template("auth/authorization_error.html")
-
-    form = UserForm()
-
-    url = auth_urls['users']
-
-    if 'url' in kwargs:
-        url = kwargs.get('url')
-
-    if not form.validate_on_submit():
-        for key, value in form.errors.items():
-            flash(str(key) + str(value), 'error')
-        return redirect(url_for(url))   
-
+def create_user():
+    form = request.form
+ 
     try:
-        user = User()
-        models = CoreModel.query.all()
-
-        for model in models:
-            permission = UserPermission(model=model, read=1,create=0, write=0, delete=0)
-            user.permissions.append(permission)
-        user.username = form.username.data
-        user.fname = form.fname.data
-        user.lname = form.lname.data
-
-        if form.email.data == '':
-            user.email = None
-        else:
-            user.email = form.email.data
-            
-        user.role_id = form.role_id.data
-        #TODO: add default password in settings
-        user.set_password("password")
-        user.is_superuser = 0
-        user.created_by = "{} {}".format(current_user.fname,current_user.lname)
-        # db.session.add(user)
-        # db.session.commit()
-        flash('New User Added Successfully!','success')
-        create_log("New user added","UserID={}".format(user.id))
-
-        return redirect(url_for(url))
-
-    except Exception as e:
-        flash(str(e),'error')
-        return redirect(url_for(url))
+        new = User()
+        new.fname = form.get('fname', '')
+        new.lname = form.get('lname', '')
+        new.email = form.get('email', '')
+        new.username = form.get('username', '')
+        new.set_password("password")
+        new.is_superuser = 0
+        
+        new.role_id = ObjectId(form.get('role')) if form.get('role') != '' else None
+        
+        role: Role = Role.find_one_by_id(id=new.role_id)
+        new.role_name = role.name
+        new.save()
+        
+        response = {
+            'status': 'success',
+            'data': new.toJson(),
+            'message': "New user added successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        print(err)
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
 
-@bp_auth.route('/users/<string:oid>/edit', methods=['GET', 'POST'])
+@bp_auth.route('/users/<string:oid>/edit', methods=['POST'])
 @login_required
 @cross_origin()
-def edit_user(oid,**kwargs):
-    user = User.query.get_or_404(oid)
-    form = UserEditForm(obj=user)
-
-    if request.method == "GET":
-        user_permissions = UserPermission.query.filter_by(user_id=oid).all()
-        form.permission_inline.data = user_permissions
-
-        _scripts = [
-            {'bp_auth.static': 'js/auth.js'},
-            {'bp_admin.static': 'js/admin_edit.js'}
-        ]
-        return admin_edit(User, form, auth_urls['edit'], oid, auth_urls['users'],action_template="auth/user_edit_action.html", \
-            modals=['auth/user_change_password_modal.html'], scripts=_scripts, **kwargs)
+def edit_user(oid):
+    form = request.form
     
-    if not form.validate_on_submit():
-        for key, value in form.errors.items():
-            flash(str(key) + str(value), 'error')
-        return redirect(url_for(auth_urls['users']))
-        
     try:
-
-        user.username = form.username.data
-        user.fname = form.fname.data
-        user.lname = form.lname.data
-        user.email = form.email.data if not form.email.data == '' else None
-        user.role_id = form.role_id.data
-        user.updated_at = datetime.now()
-        user.updated_by = "{} {}".format(current_user.fname,current_user.lname)
-        # db.session.commit()
-        flash('User update Successfully!','success')
-        create_log('User update',"UserID={}".format(oid))
-
-    except Exception as e:
-        flash(str(e),'error')
-    
-    return redirect(url_for(auth_urls['users']))
+        mongo.db.auth_users.update_one({
+            "_id": ObjectId(oid)
+        }, {"$set": {
+            "fname": form.get('fname'),
+            'lname': form.get('lname'),
+            'username': form.get('username'),
+            'email': form.get('email'),
+            'role_id': ObjectId(form.get('role')) if form.get('role') != '' else None
+        }})
+        
+        response = {
+            'status': 'success',
+            'data': {},
+            'message': "User updated Successfully!"
+        }
+        return jsonify(response), 201
+    except Exception as err:
+        return jsonify({
+            'status': 'error',
+            'message': str(err)
+        }), 500
 
 
 @bp_auth.route('/permissions')
