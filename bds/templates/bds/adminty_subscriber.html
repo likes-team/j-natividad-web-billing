@@ -368,6 +368,9 @@
                                 </ul> -->
                                 <button type="button" class="btn btn-primary waves-effect waves-light f-right d-inline-block md-trigger" data-modal="mdl_create_sub_area"> <i class="icofont icofont-plus m-r-5"></i> Create
                                 </button>
+
+                                <button style="margin-left: 10px;" type="button" class="btn btn-primary waves-effect waves-light f-right d-inline-block md-trigger" data-modal="mdl_upload_subscribers"> <i class="icofont icofont-upload m-r-5"></i> Upload
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -498,6 +501,30 @@
                                 <div class="text-center">
                                     <button type="button" class="btn btn-primary waves-effect m-r-20 f-w-600 md-close d-inline-block close_btn">Close</button>
                                     <button form="frm_edit_sub_area" type="submit" class="frm-edit-group btn btn-primary waves-effect m-r-20 f-w-600 d-inline-block save_btn">Save Changes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md-modal md-effect-13" id="mdl_upload_subscribers">
+                        <div class="md-content">
+                            <h3 class="f-26">Upload Subscribers</h3>
+                            <div>
+                                <form id="frm_upload_subscribers" action="{{url_for('bp_bds.upload_subscribers_csv')}}" method="POST" enctype="multipart/form-data" novalidate="novalidate">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <div class="form-row">
+                                        <div class="col-md-12">
+                                            <div class="position-relative form-group">
+                                                <label for="password">CSV File</label>
+                                                <input style="font-weight: bold;" type="file" class="form-control"
+                                                        name="csv_file"
+                                                        required>
+                                            </div>
+                                          </div>
+                                    </div>
+                                </form>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-primary waves-effect m-r-20 f-w-600 md-close d-inline-block close_btn">Close</button>
+                                    <button form="frm_upload_subscribers" type="submit" class="btn btn-primary waves-effect m-r-20 f-w-600 d-inline-block save_btn">Upload</button>
                                 </div>
                             </div>
                         </div>

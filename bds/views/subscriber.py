@@ -26,7 +26,6 @@ def fetch_subscribers_dt():
     start, length = int(request.args.get('start')), int(request.args.get('length'))
     search_value = request.args.get("search[value]")
     table_data = []
-    print(search_value)
 
     if search_value != '':
         query = list(mongo.db.auth_users.aggregate([
@@ -55,12 +54,6 @@ def fetch_subscribers_dt():
         total_records = len(Subscriber.find_all())
 
     filtered_records = len(query)
-
-    print("START: ", start)
-    print("DRAW: ", draw)
-    print("LENGTH: ", length)
-    print("filtered_records: ", filtered_records)
-    print("total_records: ", total_records)
 
     for data in query:
         subscriber: Subscriber = Subscriber(data=data)
