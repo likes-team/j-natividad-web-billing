@@ -1,10 +1,12 @@
 from datetime import datetime
+import pymongo
 import decimal
 from bson.objectid import ObjectId
 from flask import (jsonify, request, abort)
 from app import csrf, mongo
 from app.auth.models import User
 from bds import bp_bds
+from bds.globals import SUBSCRIBER_ROLE
 from bds.models import Delivery, Messenger, Subscriber, Area, SubArea
 
 
@@ -76,30 +78,46 @@ def update_location():
     return jsonify({'result': True})
 
 
-@bp_bds.route('/api/subscribers/<int:subscriber_id>', methods=['GET'])
+@bp_bds.route('/api/subscribers/<string:subscriber_id>', methods=['GET'])
 @csrf.exempt
 def get_subscriber(subscriber_id):
-    subscriber = Subscriber.query.get_or_404(subscriber_id)
-
-    if subscriber is None:
+    query = list(mongo.db.auth_users.aggregate([
+        {"$match": {
+            "_id": ObjectId(subscriber_id)
+        }},
+        {"$lookup": {"from": "bds_sub_areas", "localField": "sub_area_id",
+                        "foreignField": "_id", 'as': "sub_area"}},
+        {"$limit": 1}
+    ]))
+    
+    if len(query) < 1:
         abort(404)
 
-    delivery = Delivery.query.filter_by(subscriber_id=subscriber.id,active=1).first()
+    # delivery = Delivery.query.filter_by(subscriber_id=subscriber.id,active=1).first()
 
-    _status = ""
+    # _status = ""
 
-    if delivery:
-        _status = delivery.status
+    # if delivery:
+    #     _status = delivery.status
 
-    res = {
-        'id': subscriber.id,
+    subscriber: Subscriber = Subscriber(data=query[0])
+
+    data = {
+        'id': str(subscriber.id),
         'fname': subscriber.fname,
         'lname': subscriber.lname,
         'address': subscriber.address,
         'latitude': subscriber.latitude,
         'longitude': subscriber.longitude,
         'email': subscriber.email,
-        'status': _status
+        'status': "",
+        'contract_no': subscriber.contract_no,
+        'sub_area': subscriber.sub_area.name,
     }
-
-    return jsonify(res)
+    
+    response = {
+        'status': 'success',
+        'data': data,
+    }
+    
+    return jsonify(response)

@@ -36,7 +36,7 @@ def fetch_subscribers_dt():
             {"$lookup": {"from": "bds_sub_areas", "localField": "sub_area_id",
                          "foreignField": "_id", 'as': "sub_area"}},
             {"$sort": {
-                'fname': pymongo.ASCENDING
+                'lname': pymongo.ASCENDING
             }}
         ]))
         total_records = len(query)
@@ -45,11 +45,11 @@ def fetch_subscribers_dt():
             {"$match": {"role_id": SUBSCRIBER_ROLE.id}},
             {"$lookup": {"from": "bds_sub_areas", "localField": "sub_area_id",
                          "foreignField": "_id", 'as': "sub_area"}},
+            {"$sort": {
+                'lname': pymongo.ASCENDING
+            }},
             {"$skip": start},
             {"$limit": length},
-            {"$sort": {
-                'fname': pymongo.ASCENDING
-            }}
         ]))
         total_records = len(Subscriber.find_all())
 
@@ -59,8 +59,8 @@ def fetch_subscribers_dt():
         subscriber: Subscriber = Subscriber(data=data)
         table_data.append((
             str(subscriber.id),
-            subscriber.fname,
             subscriber.lname,
+            subscriber.fname,
             subscriber.sub_area.name if subscriber.sub_area is not None else '',
             subscriber.created_at_local,
             subscriber.created_by,
@@ -121,7 +121,6 @@ def get_subscriber_billings(subscriber_id):
             str(billing.subscriber_id),
             billing.status,
             billing.date_mobile_delivery if billing.messenger is not None else '',
-            billing.subscriber.full_name,
             billing.messenger.full_name if billing.messenger is not None else '',
             "",
             billing.image_path

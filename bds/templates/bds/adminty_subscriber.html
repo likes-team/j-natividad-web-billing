@@ -138,8 +138,9 @@
         } );
 
         var dt_billing_history = $('#tbl_billing_history').DataTable({
-            "dom": 'lrt',
-            "pageLength": 50,
+            "lengthChange": false,
+            "searching": false,
+            "pageLength": 5,
             "processing": true,
             "ordering": false,
             "responsive": true,
@@ -170,7 +171,7 @@
                     },
                 },
                 {
-                    "targets": 5,
+                    "targets": 4,
                     "width": "1%",
                     "render": function (data, type, row) {
                         var htmlBtnDetails = `
@@ -271,11 +272,17 @@
             console.log('Row data: ' + data);
 
             selectedSubscriberID = data[0];
-            
+
+            getSubscriberInfo(selectedSubscriberID);
+
+            $("#view_full_name").html("");
+            $("#view_contract_no").html("");
+            $("#view_address").html("");
+            $("#view_area").html("");
+
             dt_billing_history.clear().draw();
             dt_billing_history.ajax.url(`/bds/subscribers/${selectedSubscriberID}/billings`).load();
         });
-
 
         $('#frm_edit_sub_area').validate({
             'rules': {
@@ -335,6 +342,24 @@
         });
 
     });
+
+    function getSubscriberInfo(id){
+        $("#view_full_name").html("");
+        $("#view_contract_no").html("");
+        $("#view_address").html("");
+        $("#view_sub_area").html("");
+
+        $.getJSON(`/bds/api/subscribers/${id}`, function(response){
+            console.log(response);
+
+            $("#view_full_name").html(`${response.data.fname} ${response.data.lname}`);
+            $("#view_contract_no").html(response.data.contract_no);
+            $("#view_address").html(response.data.address);
+            $("#view_sub_area").html(response.data.sub_area);
+        }).fail(function(){
+            swal("Error Occured!", "Please refresh the page then try again!", "error");
+        });
+    }
 </script>
 {% endblock scripts %}
 
@@ -396,8 +421,8 @@
                                     <thead>
                                         <tr>
                                             <th>ID</th>
-                                            <th>FIRST NAME</th>
                                             <th>LAST NAME</th>
+                                            <th>FIRST NAME</th>
                                             <th>SUB AREA</th>
                                             <th>CREATED AT</th>
                                             <th>CREATED BY</th>
@@ -531,8 +556,19 @@
                     </div>
                     <div style="max-width: 1260px;" class="md-modal md-effect-13 addcontact" id="mdl_view_billing_history">
                         <div class="md-content">
-                            <h3 class="f-26">View Billing History</h3>
+                            <h3 class="f-26">Billing History</h3>
                             <div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6 mb-3">
+                                        <h5 id="view_full_name"><strong>Full Name</strong></h5>
+                                    </div>
+                                    <div class="form-group col-md-6 mb-3">
+                                        <h5 id="view_contract_no"><strong>Contract No.</strong></h5>
+                                    </div>
+                                </div>
+
+                                <h6 id="view_address">Address</h6>
+                                <h6 id="view_sub_area">Sub Area</h6>
                                 <div class="dt-responsive table-responsive">
                                     <table id="tbl_billing_history" class="table table-striped table-bordered nowrap">
                                         <thead>
@@ -540,7 +576,6 @@
                                                 <th>ID</th>
                                                 <th>STATUS</th>
                                                 <th>DATE RECEIVED</th>
-                                                <th>NAME</th>
                                                 <th>COLLECTOR</th>
                                                 <th>ACTIONS</th>
                                             </tr>
