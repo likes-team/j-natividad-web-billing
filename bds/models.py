@@ -288,6 +288,7 @@ class Delivery(BaseModel, Admin):
     accuracy: str = None
     delivery_longitude: Decimal = None
     delivery_latitude: Decimal = None
+    remarks: str = "N/A"
 
     def __init__(self, data=None):
         super(Delivery, self).__init__(data=data)

@@ -22,6 +22,7 @@ def confirm_deliver():
     messenger_id = request.form['messenger_id']
     subscriber_id = request.form['subscriber_id']
     date_mobile_delivery = request.form['date_mobile_delivery']
+    remarks = request.form['remarks']
 
     try:
         # active_billing = Billing.query.filter_by(active=1).first()
@@ -123,6 +124,7 @@ def confirm_deliver():
         delivery.accuracy = accuracy
         delivery.date_mobile_delivery = date
         delivery.date_delivered = datetime.utcnow()
+        delivery.remarks = remarks
 
         mongo.db.bds_deliveries.update_one({
             '_id': delivery.id,
@@ -134,7 +136,8 @@ def confirm_deliver():
             'delivery_longitude': delivery.delivery_longitude,
             'accuracy': delivery.accuracy,
             'date_mobile_delivery': delivery.date_mobile_delivery,
-            'date_delivered': delivery.date_delivered
+            'date_delivered': delivery.date_delivered,
+            'remarks': delivery.remarks
         }})
 
         print("Database updated", delivery.id)
@@ -214,7 +217,8 @@ def get_deliveries():
                 'sub_area_id': str(delivery.sub_area.id),
                 'sub_area_name': delivery.sub_area.name,
                 'image_path': delivery.image_path,
-                'contract_no': delivery.subscriber.contract_no
+                'contract_no': delivery.subscriber.contract_no,
+                'remarks': delivery.remarks
             })
         
         response = {
