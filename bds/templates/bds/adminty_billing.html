@@ -102,7 +102,7 @@
                     return `<label class="label label-inverse">Inactive</label>`;
                 },
             }, {
-                "targets": 7,
+                "targets": 6,
                 "width": "1%",
                 "render": function (data, type, row) {
                     const dataStatus = row[1];
@@ -437,7 +437,6 @@
                                             <th>ID</th>
                                             <th>STATUS</th>
                                             <th>BILLING NO.</th>
-                                            <th>NAME</th>
                                             <th>DESCRIPTION</th>
                                             <th>DATE FROM</th>
                                             <th>DATE TO</th>
@@ -459,12 +458,7 @@
                                             <label for="number">BILLING NO.</label>
                                             <input id="input_create_billing_no" type="text" class="form-control" name="number" placeholder="BILLING NO." required="" readonly="" value="">
                                         </div>
-                                        <div class="form-group col-md-4 mb-3">
-                                            <label for="name">NAME</label>
-                                            <input type="text" class="form-control" name="name" placeholder="NAME" required="" value="">
-                                        </div>
-                                        
-                                        <div class="form-group col-md-4 mb-3">
+                                        <div class="form-group col-md-8 mb-3">
                                             <label for="description">DESCRIPTION</label>
                                             <input type="text" class="form-control input_required" id="description" name="description" placeholder="DESCRIPTION" required="" value="">
                                             

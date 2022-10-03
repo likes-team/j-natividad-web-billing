@@ -90,7 +90,6 @@ def fetch_billings_dt():
             str(billing.id),
             billing.active,
             billing.full_billing_no,
-            billing.name,
             billing.description,
             billing.date_from,
             billing.date_to,
@@ -143,7 +142,6 @@ def create_billing():
         new = Billing()
         new.active = False
         new.full_billing_no = form.get('number')
-        new.name = form.get('name')
         new.description = form.get('description')
         new.date_to = form.get('date_to')
         new.date_from = form.get('date_from')
