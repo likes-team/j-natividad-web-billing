@@ -84,7 +84,7 @@ def confirm_deliver():
             return jsonify({'result': True})
         
         if delivery.subscriber.latitude is not None:
-            if _isCoordsNear(longitude, latitude, delivery.subscriber, .1):
+            if _isCoordsNear(longitude, latitude, delivery.subscriber, .2):
                 delivery.status = "DELIVERED"
                 print("DELIVERED", delivery.id)
             else:
