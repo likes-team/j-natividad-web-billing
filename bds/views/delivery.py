@@ -97,6 +97,7 @@ def get_billing_sub_area_deliveries(billing_id, sub_area_id):
                 subscriber.address,
                 delivery.messenger.full_name if delivery.messenger is not None else '',
                 delivery.date_mobile_delivery if status != "NOT YET DELIVERED" else '',
+                delivery.remarks,
                 "",
                 delivery.image_path
             ])
